@@ -72,6 +72,60 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
     return { x: 0, z: 3.52 };
   }
 
+  // Rear-zone recovery. When the puck has passed behind the paddle, merely
+  // matching its horizontal motion cannot create a normal impulse.
+  // Out of the goal mouth we can intentionally hit towards the REAR rail,
+  // then reposition to play the returning puck. In front of the goal opening
+  // we instead perform a lateral escape, never a planned rear-wall stroke.
+  const rearPhases = ['rearStage','rearDrive','rearSideStage','rearSideStrike'];
+  const activeRear = rearPhases.includes(brain?.phase);
+  const behindPaddle = onOwnHalf && puck.z > ai.z + .42 && puck.z > 2.0;
+  if (brain && onOwnHalf && puck.z > 1.95 &&
+      (slow || horizontal || activeRear) && (behindPaddle || activeRear)) {
+    // No rear band exists across the goal opening. Add a safety margin for
+    // the puck radius and contact-position uncertainty.
+    const rearSafeX = cfg.goalWidth/2 + cfg.puckRadius + .27;
+    const xToRail = predictRailX(puck, clampAI((cfg.length/2-puck.z)/
+      Math.max(3.0,speed),0,.25),cfg);
+    const safeForRearRail = Math.abs(puck.x)>rearSafeX &&
+      Math.abs(xToRail)>rearSafeX && puck.z<cfg.length/2-cfg.puckRadius-.04;
+    if (!activeRear) {
+      brain.rearSide = puck.x >= 0 ? -1 : 1;
+      brain.rearMode = safeForRearRail ? 'band' : 'side';
+      setPhase(brain, safeForRearRail ? 'rearStage' : 'rearSideStage', now);
+    }
+    // Safety override: never drive the puck backwards into the open goal.
+    if (brain.rearMode==='band' && !safeForRearRail && brain.phase!=='rearDrive') {
+      brain.rearMode='side';setPhase(brain,'rearSideStage',now);
+    }
+    if (brain.rearMode==='band') {
+      const targetX=predictRailX(puck,clampAI(Math.abs(ai.x-puck.x)/
+        Math.max(1,cfg.aiSpeed),0,.32),cfg);
+      const staging={x:clampAI(targetX,minX,maxX),
+        z:clampAI(puck.z-.86,minZ,maxZ)};
+      if (brain.phase==='rearStage') {
+        if (Math.hypot(staging.x-ai.x,staging.z-ai.z)<.14 &&
+            speedOf(ai)<1.2) setPhase(brain,'rearDrive',now);
+        else return staging;
+      }
+      // Drive along +Z: the actual puck/raquette collision causes the
+      // rebound from the rear wall. There is no synthetic "clear" impulse.
+      return {x:clampAI(predictRailX(puck,.08,cfg),minX,maxX),
+        z:clampAI(puck.z+.46,minZ,maxZ)};
+    }
+    const side=brain.rearSide;
+    const staging={x:clampAI(puck.x+side*.86,minX,maxX),
+      z:clampAI(puck.z-.08,minZ,maxZ)};
+    if(brain.phase==='rearSideStage'){
+      if(Math.hypot(staging.x-ai.x,staging.z-ai.z)<.13&&speedOf(ai)<1.4)
+        setPhase(brain,'rearSideStrike',now);
+      else return staging;
+    }
+    return {x:clampAI(puck.x-side*.16,minX,maxX),
+      z:clampAI(puck.z-.04,minZ,maxZ)};
+  }
+  if (brain && activeRear) setPhase(brain,'collect',now);
+
   // A puck stranded behind the paddle near the end rail cannot be struck
   // safely from behind: the motor cannot cross the goal line. Approach from
   // its SIDE first, then sweep laterally. This also covers the corner cases
