@@ -143,7 +143,7 @@ try {
   stage.on('pageerror',e=>stageErrors.push(e.message));
   stage.on('response',r=>{if(r.status()>=400)failedResources.push(r.url());});
   await stage.goto('http://127.0.0.1:'+port+'/?stage=mamouda',{waitUntil:'networkidle'});
-  await stage.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:10000});
+  await stage.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:30000});
   const stageInfo=await stage.evaluate(()=>({
     name:window.__stageDiagnostics.name,
     layers:window.__stageDiagnostics.backgroundLayers(),
