@@ -198,12 +198,15 @@ try {
     farLeft:window.__stageDiagnostics.projected(2.9,5),
     nearRight:window.__stageDiagnostics.projected(-2.9,-5),
     screenLeft:window.__stageDiagnostics.projected(1,0),
-    screenRight:window.__stageDiagnostics.projected(-1,0)
+    screenRight:window.__stageDiagnostics.projected(-1,0),
+    paddleRadius:window.__stageDiagnostics.projectedRadius(0,-3,.37),
+    puckRadius:window.__stageDiagnostics.projectedRadius(0,0,.17)
   }));
   assert.equal(finalInfo.name,'mamouda-final');
   assert.equal(finalInfo.ready,true);
   assert.equal(finalInfo.layers,2);
   assert.equal(finalInfo.canvasInvisible,true);
+  assert.ok(finalInfo.paddleRadius.rx>20 && finalInfo.puckRadius.rx>8, 'comic sprites must remain visibly sized after left-right fix');
   assert.ok(finalInfo.screenRight.x>finalInfo.screenLeft.x, 'negative world X must be screen-right');
   assert.ok(finalInfo.farLeft.x<finalInfo.nearRight.x &&
     finalInfo.farLeft.y<finalInfo.nearRight.y,
