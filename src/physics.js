@@ -43,6 +43,27 @@ export function moveToward(p, target, dt, cfg, ai = false) {
   p.x = boundX; p.z = boundZ;
 }
 
+// Direct local input: the player visually reaches the target in the very
+// next physics tick, without a motor lag, interpolation or acceleration.
+// Contact velocity alone is capped at cfg.maxSpeed, so moving a high-DPI mouse
+// cannot create arbitrarily energetic strikes. The paddle is deliberately
+// allowed to move farther than vmax*dt; this is an arcade-control trade-off.
+export function prepareDirectMove(p, target, dt, cfg) {
+  const margin = cfg.paddleRadius + .07;
+  const x = clamp(target.x, -cfg.width/2+margin, cfg.width/2-margin);
+  const z = clamp(target.z, -cfg.length/2+margin, -margin/2);
+  const dx = x-p.x, dz = z-p.z;
+  const rawSpeed = magnitude(dx,dz)/dt;
+  const factor = rawSpeed > cfg.maxSpeed ? cfg.maxSpeed/rawSpeed : 1;
+  return { fromX:p.x, fromZ:p.z, dx, dz,
+    vx:dx/dt*factor, vz:dz/dt*factor, distance:magnitude(dx,dz) };
+}
+export function applyDirectMove(p, move, progress) {
+  p.x = move.fromX + move.dx * progress;
+  p.z = move.fromZ + move.dz * progress;
+  p.vx = move.vx; p.vz = move.vz;
+}
+
 // Collision impulse of a disk against a driven paddle.
 // Relative normal velocity controls restitution; tangential velocity creates spin.
 // The paddle is motor-driven, so the external motor may supply energy.
@@ -179,13 +200,15 @@ export class Match {
     const cfg = this.cfg, dt = cfg.tick, puck = this.puck;
     this.time += dt;
     let goal = 0;
-    // Move paddles and puck together at the same substep resolution to
-    // prevent fast paddle motion from skipping collision opportunities.
-    const maxMovement = Math.max(magnitude(puck.vx, puck.vz), cfg.maxSpeed, cfg.aiSpeed) * dt;
-    const steps = clamp(Math.ceil(maxMovement / (cfg.puckRadius * .35)), 1, 24);
+    // A player command has zero artificial following delay. Sweep between
+    // old and new positions so the disk cannot teleport THROUGH the puck.
+    const direct = prepareDirectMove(this.player, this.target, dt, cfg);
+    const maxMovement = Math.max(magnitude(puck.vx,puck.vz)*dt,
+      cfg.aiSpeed*dt, direct.distance);
+    const steps = clamp(Math.ceil(maxMovement / (cfg.puckRadius * .30)), 1, 128);
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
-      moveToward(this.player, this.target, step, cfg);
+      applyDirectMove(this.player, direct, (k+1)/steps);
       const aiTarget = this.awaitingServe && this.server === 1
         ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
         : chooseAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
