@@ -2,11 +2,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.m
 import {Match, magnitude, clamp} from './physics.js';
 import {moveTargetWithMouse, moveTargetWithTouch} from './controls.js';
 import {createMamoudaStage} from './mamouda-stage.js';
+import {createMamoudaPaintedStage} from './mamouda-painted-stage.js';
 
 const canvas=document.getElementById('game'), overlay=document.getElementById('overlay');
 const playButton=document.getElementById('play');
 const match=new Match();
-const showMamouda=new URLSearchParams(window.location.search).get('stage')==='mamouda';
+const stageName=new URLSearchParams(window.location.search).get('stage');
+const showMamouda=stageName==='mamouda';
+const showMamoudaPainted=stageName==='mamouda-painted';
+const anyMamouda=showMamouda||showMamoudaPainted;
 // Read-only diagnostic snapshots for input responsiveness regression tests.
 // No mutable engine state is exposed to browser scripts.
 window.__gameDiagnostics = Object.freeze({
@@ -29,6 +33,11 @@ scene.fog=new THREE.FogExp2(0x080f1b,0.018);
 const camera=new THREE.PerspectiveCamera(55,1,.1,150);
 camera.position.set(0,7.2,-10.9);
 camera.lookAt(0,.12,1.25);
+if(showMamoudaPainted){
+  // Cosmetic test only: gently lower the view to match illustrated perspective.
+  camera.position.set(0,6.55,-10.9);
+  camera.lookAt(0,.12,1.25);
+}
 // Keep the desktop camera exactly as it is. On touch devices raise the
 // viewing angle by 20 degrees, orbiting the same target at the same distance.
 const desktopCameraPosition=camera.position.clone();
@@ -67,22 +76,22 @@ box(w,.005,.028,0,.012,0,lineMat);
 function rinkRing(x,z,r,color){const points=[];for(let k=0;k<=80;k++){const a=k/80*Math.PI*2;points.push(new THREE.Vector3(x+r*Math.cos(a),.012,z+r*Math.sin(a)));}const geo=new THREE.BufferGeometry().setFromPoints(points),line=new THREE.Line(geo,new THREE.LineBasicMaterial({color,transparent:true,opacity:.55}));scene.add(line);}
 rinkRing(0,0,.88,0x66c9d7);rinkRing(0,-3.6,.85,0x45b4be);rinkRing(0,3.6,.85,0xdd995b);
 const floor=box(120,.25,120,0,-.9,0,mat(0x09111f,.03,.88));
-const grid=new THREE.GridHelper(90,50,0x13273a,0x13273a);grid.position.y=-.76;if(!showMamouda)scene.add(grid);
-if(!showMamouda)for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(.3,4,.3,Math.cos(a)*11,1,Math.sin(a)*10,mat(0x172c46,.6,.5));}
-const stageFx=showMamouda?createMamoudaStage(THREE,scene,camera):null;
+const grid=new THREE.GridHelper(90,50,0x13273a,0x13273a);grid.position.y=-.76;if(!anyMamouda)scene.add(grid);
+if(!anyMamouda)for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(.3,4,.3,Math.cos(a)*11,1,Math.sin(a)*10,mat(0x172c46,.6,.5));}
+const stageFx=showMamouda?createMamoudaStage(THREE,scene,camera):showMamoudaPainted?createMamoudaPaintedStage(THREE,scene,camera):null;
 window.__stageDiagnostics=Object.freeze({
-  name:showMamouda?'mamouda':'lab',
+  name:showMamoudaPainted?'mamouda-painted':showMamouda?'mamouda':'lab',
   ready:()=>stageFx?.ready()??true,
   backgroundLayers:()=>stageFx?.backgroundLayers??0
 });
-if(showMamouda){
+if(anyMamouda){
   floor.material.color.set(0x090916);
   floor.visible=false; // Prevent the huge neutral lab floor from masking painted bar layers.
   board.color.set(0x2a1728);
   rim.color.set(0x503047);
   document.getElementById('brand').textContent='SYNTHPUCK // MAMOUDA';
   document.getElementById('dialogTitle').textContent='SYNTHPUCK — MAMOUDA';
-  document.querySelector('.lead').textContent='TEST 2.5D · BAR CAPSULES';
+  document.querySelector('.lead').textContent=showMamoudaPainted?'TEST 2.5D · ILLUSTRATION':'TEST 2.5D · BAR CAPSULES';
 }
 function cylinder(rad,depth,color){const m=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,depth,48),mat(color,.52,.26));m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;}
 const playerObj=cylinder(match.cfg.paddleRadius,.24,0x58e5e9),aiObj=cylinder(match.cfg.paddleRadius,.24,0xf6a969),puckObj=cylinder(match.cfg.puckRadius,.095,0xf8fcfc);
