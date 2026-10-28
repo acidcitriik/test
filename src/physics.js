@@ -134,7 +134,8 @@ export class Match {
     this.puck = { x: 0, z: 0, vx: 0, vz: 0, spin: 0, lastImpact: null };
     this.scores = [0, 0];
     this.state = 'ready';
-    this.server = -1;
+    this.server = -1; // first engagement belongs to the player
+    this.awaitingServe = false;
     this.time = 0;
     this.hits = 0;
     this.rally = 0;
@@ -145,14 +146,16 @@ export class Match {
   reset() { Object.assign(this, new Match({ ...this.cfg })); }
   serve() {
     if (this.state === 'over') return;
-    this.puck.x = 0; this.puck.z = this.server * .75;
-    this.puck.vx = (this.scores[0] + this.scores[1]) % 2 ? .65 : 0;
-    this.puck.vz = -this.server * 3.1;
+    // A real engagement: a stationary puck on the server's half.
+    // Neither player nor AI receives a pre-programmed impulse.
+    this.puck.x = 0; this.puck.z = this.server * 2.35;
+    this.puck.vx = 0; this.puck.vz = 0;
     this.puck.spin = 0; this.puck.lastImpact = null;
     Object.assign(this.player, { x: 0, z: -3.8, vx: 0, vz: 0 });
     Object.assign(this.ai, { x: 0, z: 3.8, vx: 0, vz: 0 });
     Object.assign(this.target, { x: 0, z: -3.8 });
     this.rally = 0; this.state = 'playing';
+    this.awaitingServe = true;
     this.aiBrain = createAIBrain();
     this.events.length = 0;
   }
@@ -183,7 +186,9 @@ export class Match {
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
       moveToward(this.player, this.target, step, cfg);
-      const aiTarget = chooseAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
+      const aiTarget = this.awaitingServe && this.server === 1
+        ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
+        : chooseAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
       moveToward(this.ai, aiTarget, step, cfg, true);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
@@ -192,6 +197,10 @@ export class Match {
         [this.ai, 'ai', 'normal']
       ]) {
         if (collidePaddle(puck, paddle, cfg, mode)) {
+          if (this.awaitingServe) {
+            this.awaitingServe = false;
+            this.record({ type: 'serve', by: label });
+          }
           this.hits++; this.rally++;
           if (label === 'ai') recordAIHit(this.aiBrain, this.time);
           this.record({ type: 'impact', by: label, ...puck.lastImpact });
