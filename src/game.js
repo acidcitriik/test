@@ -1,5 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import {Match, magnitude, clamp} from './physics.js';
+import {moveTargetWithMouse} from './controls.js';
 
 const canvas=document.getElementById('game'), overlay=document.getElementById('overlay');
 const playButton=document.getElementById('play');
@@ -62,9 +63,10 @@ playButton.addEventListener('click',start);
 canvas.addEventListener('click',()=>{if(active && document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==canvas && active)show('PAUSE','Le duel est en pause. Reprends quand tu veux.','REPRENDRE');});
 document.addEventListener('mousemove',e=>{if(!active||document.pointerLockElement!==canvas)return;
-// CSS-independent relative movement converted to world meters. Not tied to camera projection.
-match.target.x=clamp(match.target.x+e.movementX*.005*sensitivity,-w/2+.48,w/2-.48);
-match.target.z=clamp(match.target.z-e.movementY*.005*sensitivity,-L/2+.5,-.22);
+// Camera-right is world -X; preserve the existing forward/backward axis.
+const target=moveTargetWithMouse(match.target,e.movementX,e.movementY,sensitivity,match.cfg);
+match.target.x=target.x;
+match.target.z=target.z;
 });
 document.addEventListener('contextmenu',e=>{if(active)e.preventDefault();});
 document.addEventListener('mousedown',e=>{if(!active)return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
