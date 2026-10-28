@@ -28,7 +28,19 @@ try {
   await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
   await page.locator('#game').waitFor();
   await page.getByRole('button',{name:'JOUER'}).click();
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(300);
+  const locked=await page.evaluate(()=>document.pointerLockElement?.id);
+  assert.equal(locked,'game','mouse must be captured for actual play');
+  await page.mouse.move(890,550);
+  await page.waitForTimeout(75);
+  const moving=await page.evaluate(()=>Number.parseFloat(document.querySelector('#paddleSpeed').textContent));
+  assert.ok(moving > 0, 'relative mouse movement must accelerate the paddle');
+  await page.mouse.down({button:'right'});
+  await page.waitForTimeout(40);
+  const mode=await page.locator('#contact').textContent();
+  assert.equal(mode,'AMORTI','right mouse button must change contact mode');
+  await page.mouse.up({button:'right'});
+  await page.waitForTimeout(200);
   const state=await page.evaluate(()=>({
     overlay:getComputedStyle(document.querySelector('#overlay')).display,
     score:document.querySelector('#score').textContent,
