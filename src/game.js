@@ -41,7 +41,7 @@ function cylinder(rad,depth,color){const m=new THREE.Mesh(new THREE.CylinderGeom
 const playerObj=cylinder(match.cfg.paddleRadius,.24,0x58e5e9),aiObj=cylinder(match.cfg.paddleRadius,.24,0xf6a969),puckObj=cylinder(match.cfg.puckRadius,.095,0xf8fcfc);
 const playerGlow=new THREE.PointLight(0x35e8ed,1.2,1.5);scene.add(playerGlow);
 const aiGlow=new THREE.PointLight(0xffb565,.95,1.5);scene.add(aiGlow);
-let active=false,wasReady=false,lastTime=0,acc=0,sensitivity=1;
+let active=false,lastTime=0,acc=0,sensitivity=1;
 function sync(){
   playerObj.position.set(match.player.x,.16,match.player.z);
   aiObj.position.set(match.ai.x,.16,match.ai.z);
@@ -54,11 +54,10 @@ function sync(){
   document.getElementById('spin').textContent=match.puck.spin.toFixed(1)+' rad/s';
   document.getElementById('hits').textContent=String(match.rally);
   document.getElementById('contact').textContent=({normal:'NATUREL',rigid:'RIGIDE',soft:'AMORTI',grip:'ADHÉRENCE'})[match.impactMode()];
-  if(match.state!=='playing' && !wasReady){wasReady=true;if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.', 'REJOUER'); else show('POINT MARQUÉ','Clique pour engager le prochain palet.', 'CONTINUER');}
-  if(match.state==='playing')wasReady=false;
+
 }
-function show(title,description,button){active=false;document.exitPointerLock?.();overlay.hidden=false;overlay.style.display='grid';document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=description;playButton.textContent=button;}
-function start(){if(match.state==='over')match.reset();if(match.state==='ready')match.serve();overlay.hidden=true;overlay.style.display='none';active=true;canvas.requestPointerLock?.();wasReady=false;}
+function show(title,description,button){active=false;match.setButton('left',false);match.setButton('right',false);document.exitPointerLock?.();overlay.hidden=false;overlay.style.display='grid';document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=description;playButton.textContent=button;}
+function start(){if(match.state==='over')match.reset();if(match.state==='ready')match.serve();overlay.hidden=true;overlay.style.display='none';active=true;acc=0;const promise=canvas.requestPointerLock?.();if(promise?.catch)promise.catch(()=>show('SOURIS NON VERROUILLÉE','Autorise la capture de la souris dans ce navigateur pour jouer.','RÉESSAYER'));}
 playButton.addEventListener('click',start);
 canvas.addEventListener('click',()=>{if(active && document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
 document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==canvas && active)show('PAUSE','Le duel est en pause. Reprends quand tu veux.','REPRENDRE');});
@@ -75,5 +74,5 @@ document.addEventListener('keydown',e=>{if(e.code==='KeyR'){match.reset();show('
 const settings=[['sensitivity','sensValue',v=>sensitivity=v],['speed','speedValue',v=>match.cfg.maxSpeed=v],['accel','accelValue',v=>match.cfg.acceleration=v],['bounce','bounceValue',v=>match.cfg.wallRestitution=v],['friction','frictionValue',v=>match.cfg.friction=v],['ai','aiValue',v=>match.cfg.aiSpeed=v]];
 for(const[id,out,action]of settings){const el=document.getElementById(id);el.addEventListener('input',()=>{const v=Number(el.value);action(v);document.getElementById(out).textContent=String(v);});}
 function resize(){const width=innerWidth,height=innerHeight;camera.aspect=width/height;camera.fov=height>width?66:55;camera.updateProjectionMatrix();renderer.setSize(width,height,false);}addEventListener('resize',resize);resize();
-function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;}sync();renderer.render(scene,camera);}
+function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready')show('POINT MARQUÉ','Clique pour engager le palet suivant.','CONTINUER');if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();renderer.render(scene,camera);}
 requestAnimationFrame(frame);
