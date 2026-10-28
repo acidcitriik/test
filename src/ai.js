@@ -89,8 +89,8 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
       const side = brain.bankSide;
       // Staging point is OUTSIDE contact range (paddle + puck radii = .54).
       const staging = {
-        x: clampAI(puck.x - side * .78, minX, maxX),
-        z: clampAI(puck.z + .78, minZ, maxZ)
+        x: clampAI(puck.x - side * .86, minX, maxX),
+        z: clampAI(puck.z + .57, minZ, maxZ)
       };
       if (brain.phase === 'bankSetup') {
         const distance = Math.hypot(ai.x - staging.x, ai.z - staging.z);
@@ -102,7 +102,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
       // using the motor's actual current velocity and contact normal.
       return {
         x: clampAI(puck.x + side * .16, minX, maxX),
-        z: clampAI(puck.z + .06, minZ, maxZ)
+        z: clampAI(puck.z + .14, minZ, maxZ)
       };
     }
   }
