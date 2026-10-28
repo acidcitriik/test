@@ -38,6 +38,15 @@ try {
   await page.mouse.up({button:'right'});
   const initial=await page.evaluate(()=>window.__gameDiagnostics.player());
   await page.mouse.move(890,550);
+  // Headless Chromium can coalesce/suppress actual mouse deltas under
+  // pointer lock. Dispatch one deterministic relative delta through the
+  // same production event listener to test zero-lag follow behavior.
+  await page.evaluate(() => {
+    const event = new MouseEvent('mousemove', { bubbles:true });
+    Object.defineProperty(event,'movementX',{value:90});
+    Object.defineProperty(event,'movementY',{value:-40});
+    document.dispatchEvent(event);
+  });
   await page.waitForFunction(previous => {
     const player=window.__gameDiagnostics.player();
     return Math.abs(player.x-previous.x)>0.02 || Math.abs(player.z-previous.z)>0.02;
