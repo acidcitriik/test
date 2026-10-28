@@ -6,7 +6,7 @@ import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright';
 
 const root = resolve(import.meta.dirname, '..');
-const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json' };
+const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.svg':'image/svg+xml; charset=utf-8' };
 const server = http.createServer(async(req,res)=>{
   try {
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -137,7 +137,27 @@ try {
     'rotation must preserve the raised camera angle');
   assert.deepEqual(mobileErrors,[]);
   await mobile.close();
-  console.log('Browser smoke passed:',JSON.stringify(state));
+  // Opt-in 2.5D stage must load both layers and preserve basic playability.
+  const stage=await browser.newPage({viewport:{width:1366,height:768}});
+  const stageErrors=[], failedResources=[];
+  stage.on('pageerror',e=>stageErrors.push(e.message));
+  stage.on('response',r=>{if(r.status()>=400)failedResources.push(r.url());});
+  await stage.goto('http://127.0.0.1:'+port+'/?stage=mamouda',{waitUntil:'networkidle'});
+  await stage.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:10000});
+  const stageInfo=await stage.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    ready:window.__stageDiagnostics.ready()
+  }));
+  assert.deepEqual(stageInfo,{name:'mamouda',layers:2,ready:true},
+    'Mamouda must have two loaded visual background layers');
+  assert.deepEqual(failedResources,[], 'Mamouda assets must be reachable');
+  await stage.locator('#play').click();
+  await stage.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  await stage.screenshot({path:'mamouda-preview.png'});
+  assert.deepEqual(stageErrors,[],'Mamouda stage must not produce JS errors');
+  await stage.close();
+  console.log('Browser smoke passed:',JSON.stringify(state),'Mamouda:',JSON.stringify(stageInfo));
 } finally {
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
