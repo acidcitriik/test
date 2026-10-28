@@ -50,6 +50,9 @@ function sync(){
   playerGlow.position.copy(playerObj.position);aiGlow.position.copy(aiObj.position);
   puckObj.rotation.y+=match.puck.spin*.0015;
   document.getElementById('score').textContent=match.scores.join(' : ');
+  document.getElementById('hint').textContent=match.awaitingServe
+    ? (match.server===-1 ? 'À TOI D’ENGAGER · FRAPPE LE PALET' : 'ENGAGEMENT DE L’IA · PRÉPARE-TOI')
+    : 'PREMIER À 7 · PHYSICS LAB';
   document.getElementById('puckSpeed').textContent=magnitude(match.puck.vx,match.puck.vz).toFixed(1)+' m/s';
   document.getElementById('paddleSpeed').textContent=magnitude(match.player.vx,match.player.vz).toFixed(1)+' m/s';
   document.getElementById('spin').textContent=match.puck.spin.toFixed(1)+' rad/s';
@@ -76,5 +79,5 @@ document.addEventListener('keydown',e=>{if(e.code==='KeyR'){match.reset();show('
 const settings=[['sensitivity','sensValue',v=>sensitivity=v],['speed','speedValue',v=>match.cfg.maxSpeed=v],['accel','accelValue',v=>match.cfg.acceleration=v],['bounce','bounceValue',v=>match.cfg.wallRestitution=v],['friction','frictionValue',v=>match.cfg.friction=v],['ai','aiValue',v=>match.cfg.aiSpeed=v]];
 for(const[id,out,action]of settings){const el=document.getElementById(id);el.addEventListener('input',()=>{const v=Number(el.value);action(v);document.getElementById(out).textContent=String(v);});}
 function resize(){const width=innerWidth,height=innerHeight;camera.aspect=width/height;camera.fov=height>width?66:55;camera.updateProjectionMatrix();renderer.setSize(width,height,false);}addEventListener('resize',resize);resize();
-function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready')show('POINT MARQUÉ','Clique pour engager le palet suivant.','CONTINUER');if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();renderer.render(scene,camera);}
+function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal');show(last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA','Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();renderer.render(scene,camera);}
 requestAnimationFrame(frame);
