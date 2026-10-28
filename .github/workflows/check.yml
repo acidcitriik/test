@@ -1,0 +1,26 @@
+name: Physics and browser verification
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JS syntax
+        run: |
+          node --check src/physics.js
+          node --check src/game.js
+      - name: Run simulation tests
+        run: node --test tests/physics.test.mjs
+      - name: Install headless Chromium driver
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Smoke test 3D game startup
+        run: node tests/browser-smoke.mjs
