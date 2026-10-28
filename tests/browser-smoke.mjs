@@ -36,10 +36,20 @@ try {
   await page.mouse.down({button:'right'});
   await page.waitForFunction(()=>document.querySelector('#contact')?.textContent==='AMORTI',null,{timeout:2500});
   await page.mouse.up({button:'right'});
+  const initial=await page.evaluate(()=>window.__gameDiagnostics.player());
   await page.mouse.move(890,550);
-  await page.waitForFunction(()=>Number.parseFloat(document.querySelector('#paddleSpeed').textContent)>0,null,{timeout:2500});
-  const moving=await page.evaluate(()=>Number.parseFloat(document.querySelector('#paddleSpeed').textContent));
-  assert.ok(moving > 0, 'relative mouse movement must accelerate the paddle');
+  await page.waitForFunction(previous => {
+    const player=window.__gameDiagnostics.player();
+    return Math.abs(player.x-previous.x)>0.02 || Math.abs(player.z-previous.z)>0.02;
+  },initial,{timeout:2500});
+  const position=await page.evaluate(()=>({
+    player:window.__gameDiagnostics.player(),
+    target:window.__gameDiagnostics.target()
+  }));
+  assert.ok(Math.abs(position.player.x-position.target.x)<1e-5,
+    'horizontal player paddle must reach mouse target with zero software follow lag');
+  assert.ok(Math.abs(position.player.z-position.target.z)<1e-5,
+    'forward/back paddle must reach mouse target with zero software follow lag');
   await page.waitForTimeout(200);
   const state=await page.evaluate(()=>({
     overlay:getComputedStyle(document.querySelector('#overlay')).display,
