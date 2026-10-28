@@ -28,18 +28,18 @@ try {
   await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
   await page.locator('#game').waitFor();
   await page.getByRole('button',{name:'JOUER'}).click();
-  await page.waitForTimeout(300);
+  await page.waitForFunction(()=>document.pointerLockElement?.id==='game');
   const locked=await page.evaluate(()=>document.pointerLockElement?.id);
   assert.equal(locked,'game','mouse must be captured for actual play');
+  // The contact HUD is frame-driven: wait for an actual frame instead of
+  // assuming 40 ms is enough on a software-rendered GitHub runner.
+  await page.mouse.down({button:'right'});
+  await page.waitForFunction(()=>document.querySelector('#contact')?.textContent==='AMORTI',null,{timeout:2500});
+  await page.mouse.up({button:'right'});
   await page.mouse.move(890,550);
-  await page.waitForTimeout(75);
+  await page.waitForFunction(()=>Number.parseFloat(document.querySelector('#paddleSpeed').textContent)>0,null,{timeout:2500});
   const moving=await page.evaluate(()=>Number.parseFloat(document.querySelector('#paddleSpeed').textContent));
   assert.ok(moving > 0, 'relative mouse movement must accelerate the paddle');
-  await page.mouse.down({button:'right'});
-  await page.waitForTimeout(40);
-  const mode=await page.locator('#contact').textContent();
-  assert.equal(mode,'AMORTI','right mouse button must change contact mode');
-  await page.mouse.up({button:'right'});
   await page.waitForTimeout(200);
   const state=await page.evaluate(()=>({
     overlay:getComputedStyle(document.querySelector('#overlay')).display,
