@@ -17,7 +17,7 @@ Ce projet est statique : aucun serveur backend, compte ou installation npm n'est
 - **Bouton droit maintenu** : mode de contact amorti, davantage de friction.
 - **Les deux maintenus** : mode de contact d'adhérence, favorise le spin.
 - **R** : recommencer un match, **Espace** : engager/reprendre, **Échap** : pause.
-- Panneau **Laboratoire** : sensibilité, vitesse maximale et accélération, restitution des bandes, friction, compétence de l'IA.
+- Panneau **Laboratoire** : sensibilité, vitesse maximale des impacts du joueur, accélération et vitesse de l'IA, restitution des bandes, friction.
 
 ## Architecture
 
@@ -25,14 +25,14 @@ Ce projet est statique : aucun serveur backend, compte ou installation npm n'est
 - `src/physics.js` : modèle de simulation XZ à pas fixe, indépendant du moteur graphique.
 - `src/game.js` : rendu Three.js 3D, caméra en perspective, entrées et HUD.
 - `src/ai.js` : logique tactique déterministe de l'adversaire, indépendante de la physique et du rendu.
-- `tests/physics.test.mjs`, `tests/ai*.test.mjs`, `tests/controls.test.mjs` : tests automatisés des collisions, de la tactique et des commandes.
+- `tests/physics.test.mjs`, `tests/ai*.test.mjs`, `tests/controls.test.mjs`, `tests/direct-control.test.mjs` : tests automatisés des collisions, de la tactique et des commandes.
 - `tests/browser-smoke.mjs` : lancement et mouvements testés dans un navigateur Chromium automatisé.
 
 Exécuter tous les tests du moteur avec `npm test` (Node.js récent). Aucun package npm n'est requis pour les tests du moteur.
 
 ## Principes et limites
 
-Le joueur contrôle une **position cible virtuelle** ; la raquette accélère et freine avec les mêmes plafonds physiques pour tout le monde. Les collisions utilisent la vitesse relative, les impulsions normales/tangentielles, un coefficient de restitution, des frottements et la rotation du palet. Les gestes obliques ou arrondis n'ont **aucun bonus caché**.
+**Contrôle local direct (latence logicielle de suivi : 0)** : la raquette du joueur rejoint la position de souris dès le prochain pas de simulation (120 Hz), sans lissage, inertie ni accélération. La vitesse utilisée pour calculer la puissance des collisions reste plafonnée à la valeur « Vitesse max. d'impact » afin de limiter l'avantage des mouvements de souris extrêmes. Les déplacements peuvent cependant être instantanés sur la table : c'est un choix **arcade**, différent de la contrainte de vitesse motrice envisagée pour un futur mode compétitif. L'IA conserve son accélération et ses limites de vitesse. Les collisions utilisent la vitesse relative, les impulsions normales/tangentielles, un coefficient de restitution, des frottements et la rotation du palet. Les gestes obliques ou arrondis n'ont **aucun bonus caché**.
 
 Ce prototype est une **expérimentation locale**, pas un produit esport final : pas de netcode, de classement, de mode PS5, de simulation garantie identique entre architectures ni de calibration matérielle absolue. Les unités et coefficients sont ajustables pour tester les sensations, sans prétendre reproduire fidèlement les matériaux d'une table de air hockey réelle. Le code charge Three.js depuis jsDelivr ; l'usage hors ligne exige une copie locale de la bibliothèque.
 
@@ -63,3 +63,7 @@ L'IA n'est plus limitée à un seul contact par échange. Elle poursuit le palet
 - elle conserve la même simulation d'inertie, d'accélération, de contact et de vitesse que les autres raquettes, sans appliquer de vitesse artificielle au palet.
 
 La simulation et l'IA ne constituent pas encore un système de stratégie compétitive abouti. Les choix tactiques sont déterministes et restent à régler après des parties humaines.
+
+## Réactivité du contrôle
+
+Le contrôle local ne comporte plus de traînage artificiel : lorsque la souris change de direction, la raquette suit la nouvelle cible au pas de simulation suivant. Le jeu doit toujours attendre le prochain rafraîchissement du navigateur/écran pour afficher le mouvement, ce qui n'est pas une latence absolument nulle au sens matériel. Le moteur balaie le chemin de déplacement pendant le pas de physique pour éviter qu'un mouvement brusque traverse le palet sans collision. Les impulsions utilisent une vitesse de raquette plafonnée, même pour les très grands déplacements.
