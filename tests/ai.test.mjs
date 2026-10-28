@@ -29,6 +29,8 @@ test('AI target is physically attainable inside its half',()=>{
 });
 test('actual AI paddle moves forward, backward and strikes puck',()=>{
   const m=new Match();m.serve();
+  // This test measures a live exchange, not the new stationary player serve.
+  Object.assign(m.puck,{x:0,z:0,vx:0,vz:4});m.awaitingServe=false;
   let smallest=m.ai.z, largest=m.ai.z, minVz=0,maxVz=0, aiHits=0, prevHits=0;
   for(let i=0;i<1800 && m.state==='playing';i++){
     m.target.z=-3.7;
