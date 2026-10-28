@@ -1,4 +1,4 @@
-# AcidSoul Competitive — Prototype HTML 3D
+# Kinetic Duel — Prototype HTML 3D
 
 Prototype local jouable dans le navigateur : duel de palets **en 3D, caméra derrière la raquette face à l'adversaire**, contre une IA.
 
