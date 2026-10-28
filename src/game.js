@@ -114,15 +114,15 @@ function start(){if(match.state==='over')match.reset();if(match.state==='ready')
 playButton.addEventListener('click',start);
 canvas.addEventListener('click',()=>{if(active && !isTouchDevice && document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
 document.addEventListener('pointerlockchange',()=>{if(!isTouchDevice && document.pointerLockElement!==canvas && active)show('PAUSE','Le duel est en pause. Reprends quand tu veux.','REPRENDRE');});
-document.addEventListener('mousemove',e=>{if(!active||document.pointerLockElement!==canvas)return;
+document.addEventListener('mousemove',e=>{if(!active||isTouchDevice||document.pointerLockElement!==canvas)return;
 // Camera-right is world -X; preserve the existing forward/backward axis.
 const target=moveTargetWithMouse(match.target,e.movementX,e.movementY,sensitivity,match.cfg);
 match.target.x=target.x;
 match.target.z=target.z;
 });
 document.addEventListener('contextmenu',e=>{if(active)e.preventDefault();});
-document.addEventListener('mousedown',e=>{if(!active)return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
-document.addEventListener('mouseup',e=>{if(e.button===0)match.setButton('left',false);if(e.button===2)match.setButton('right',false);});
+document.addEventListener('mousedown',e=>{if(!active||isTouchDevice)return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
+document.addEventListener('mouseup',e=>{if(isTouchDevice)return;if(e.button===0)match.setButton('left',false);if(e.button===2)match.setButton('right',false);});
 window.addEventListener('blur',()=>{match.setButton('left',false);match.setButton('right',false);if(active)show('PAUSE','Fenêtre inactive.','REPRENDRE');});
 document.addEventListener('keydown',e=>{if(e.code==='KeyR'){match.reset();show('NOUVEAU MATCH','Premier à sept points.','JOUER');}if(e.code==='Space'){e.preventDefault();if(!active)start();}if(e.code==='Escape'&&active)show('PAUSE','Reprends quand tu veux.','REPRENDRE');});
 const settings=[['sensitivity','sensValue',v=>sensitivity=v],['speed','speedValue',v=>match.cfg.maxSpeed=v],['accel','accelValue',v=>match.cfg.aiAcceleration=v],['bounce','bounceValue',v=>match.cfg.wallRestitution=v],['friction','frictionValue',v=>match.cfg.friction=v],['ai','aiValue',v=>match.cfg.aiSpeed=v]];
