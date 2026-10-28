@@ -1,3 +1,4 @@
+import { chooseAITarget } from './ai.js';
 // Local gameplay simulation. X/Z is the table plane; the Three.js scene is 3D.
 // This deliberately does not depend on the renderer or frame rate.
 export const DEFAULTS = Object.freeze({
@@ -180,15 +181,8 @@ export class Match {
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
       moveToward(this.player, this.target, step, cfg);
-      const approaching = puck.vz > .05 || puck.z > 1.5;
-      let aimX = 0, aimZ = 3.65;
-      if (approaching) {
-        const until = Math.max(0, (3.5 - puck.z) / Math.max(.4, puck.vz));
-        // Predict a straight flight. The AI intentionally misreads wall bounces.
-        aimX = clamp(puck.x + puck.vx * until * .85, -cfg.width / 2 + .46, cfg.width / 2 - .46);
-        aimZ = puck.z > 2.7 ? Math.min(4.2, puck.z + .42) : 3.48;
-      }
-      moveToward(this.ai, { x: aimX, z: aimZ }, step, cfg, true);
+      const aiTarget = chooseAITarget(puck, this.ai, this.player, cfg);
+      moveToward(this.ai, aiTarget, step, cfg, true);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
       for (const [paddle, label, mode] of [
