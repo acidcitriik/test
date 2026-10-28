@@ -17,6 +17,7 @@ jobs:
           node --check src/physics.js
           node --check src/game.js
           node --check src/mamouda-stage.js
+          node --check src/mamouda-painted-stage.js
           node --check src/controls.js
       - name: Run simulation tests
         run: node --test tests/*.test.mjs
@@ -31,5 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mamouda-preview
-          path: mamouda-preview.png
+          path: |
+            mamouda-preview.png
+            mamouda-painted-preview.png
           if-no-files-found: ignore
