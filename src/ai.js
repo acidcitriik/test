@@ -56,6 +56,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
 
   if (brain && !brain.lastPuckOnAIHalf && onOwnHalf) {
     brain.possessionHits = 0;
+    brain.bankAttempts = 0; // new arrival means a new tactical possession
     if (brain.phase === 'follow') setPhase(brain, 'defend', now);
   }
   if (brain) brain.lastPuckOnAIHalf = onOwnHalf;
