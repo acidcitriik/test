@@ -13,6 +13,14 @@ export function createMamoudaIllustratedStage({canvas, match}) {
   const neon=new Image();
   base.src=new URL('../assets/mamouda/scene-off.webp',import.meta.url).href;
   neon.src=new URL('../assets/mamouda/neon-on.webp',import.meta.url).href;
+  // All moving props are extracted from the *approved* original artwork.
+  const spriteAtlas=new Image();
+  spriteAtlas.src=new URL('../assets/mamouda/sprites.webp',import.meta.url).href;
+  const atlasRects={
+    player:[6,8,232,137],
+    ai:[258,8,232,137],
+    puck:[10,164,90,60]
+  };
   base.alt='Bar de Mamouda, arène SYNTHPUCK';
   neon.alt='';
   const spriteCanvas=document.createElement('canvas');
@@ -47,7 +55,9 @@ export function createMamoudaIllustratedStage({canvas, match}) {
     {x:1470,y:797},{x:202,y:797}
   ];
   function worldToImage(x,z){
-    const u=x/match.cfg.width+.5;
+    // Camera-right is world -X in the existing Three.js controls.
+    // Mirror only the VISUAL projection, never the authoritative physics.
+    const u=.5-x/match.cfg.width;
     const v=.5-z/match.cfg.length;
     const y=400+175*v+222*v*v;
     const left=648-286*v-160*v*v;
@@ -83,6 +93,21 @@ export function createMamoudaIllustratedStage({canvas, match}) {
   function drawDisc(piece,color){
     const {x,z,r,owner}=piece;
     const pt=project(x,z),{rx,ry}=radiusPixels(x,z,r);
+    if(spriteAtlas.complete && spriteAtlas.naturalWidth>0){
+      const rect=atlasRects[owner], [sx,sy,sw,sh]=rect;
+      // The sprite was cut from the identical DA, including its own rim lights.
+      // Scale with image-space distance: no physics or collision dependency.
+      const width=Math.max(10,2.15*rx);
+      const height=width*(sh/sw);
+      const ctx=spriteCtx;
+      ctx.save();
+      ctx.shadowColor='rgba(0,0,0,.65)';
+      ctx.shadowBlur=Math.min(14,width*.08);
+      ctx.drawImage(spriteAtlas,sx,sy,sw,sh,
+        pt.x-width/2,pt.y-height*.83,width,height);
+      ctx.restore();
+      return;
+    }
     const height=Math.max(4,ry*.78),y=pt.y-height*.20;
     const ctx=spriteCtx;
     // Contact shadow: follows illustrated surface, not a physical 3D mesh.
@@ -148,7 +173,7 @@ export function createMamoudaIllustratedStage({canvas, match}) {
   }
   return {
     resize, update,
-    get ready(){return base.complete&&base.naturalWidth>0&&neon.complete&&neon.naturalWidth>0;},
+    get ready(){return base.complete&&base.naturalWidth>0&&neon.complete&&neon.naturalWidth>0&&spriteAtlas.complete&&spriteAtlas.naturalWidth>0;},
     backgroundLayers:2,
     project,
     destroy(){
