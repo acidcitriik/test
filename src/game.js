@@ -77,6 +77,7 @@ window.__stageDiagnostics=Object.freeze({
 });
 if(showMamouda){
   floor.material.color.set(0x090916);
+  floor.visible=false; // Prevent the huge neutral lab floor from masking painted bar layers.
   board.color.set(0x2a1728);
   rim.color.set(0x503047);
   document.getElementById('brand').textContent='SYNTHPUCK // MAMOUDA';
