@@ -12,7 +12,7 @@ export function createMamoudaStage(THREE, scene, camera) {
   const makeLayer = (name, path, width, height, y, z, opacity = 1) => {
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff, transparent: true, opacity, depthWrite: false,
-      side: THREE.DoubleSide, toneMapped: false
+      side: THREE.DoubleSide, toneMapped: false, fog: false
     });
     const plane = new THREE.Mesh(new THREE.PlaneGeometry(width, height), material);
     plane.name = name;
