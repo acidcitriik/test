@@ -3,7 +3,7 @@
  * No collision bodies, game rules or input handling live in this module.
  * Three layers: painted distant bar, translucent midground, and 3D props/neon.
  */
-export function createMamoudaStage(THREE, scene) {
+export function createMamoudaStage(THREE, scene, camera) {
   const group = new THREE.Group();
   group.name = 'mamouda-stage-25d';
   scene.add(group);
@@ -34,6 +34,18 @@ export function createMamoudaStage(THREE, scene) {
   // produces parallax relative to the table when the camera angle changes.
   const far = makeLayer('neon-bar-back-wall', '../assets/mamouda/back-wall.svg',
     33, 18.56, 7.0, 18.5);
+  // Keep the distant painted wall full-bleed on all viewport sizes.
+  // The midground still lives in world space, giving true camera parallax.
+  scene.add(camera);
+  camera.add(far);
+  far.position.set(0, 0, -50);
+  far.renderOrder = -100;
+  function resize() {
+    const height = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * 50;
+    far.scale.set(height * camera.aspect * 1.08 / 33,
+      height * 1.08 / 18.56, 1);
+  }
+  resize();
   const mid = makeLayer('neon-bar-midground', '../assets/mamouda/mid-room.svg',
     21.5, 12.09, 4.4, 10.6, 0.96);
 
@@ -81,5 +93,6 @@ export function createMamoudaStage(THREE, scene) {
     far.position.x = Math.sin(timeSeconds * .15) * .016;
     mid.position.x = Math.sin(timeSeconds * .15 + .7) * .026;
   }
-  return {group, update, ready: () => Boolean(far.material.map && mid.material.map)};
+  return {group, update, resize, backgroundLayers:2,
+    ready: () => Boolean(far.material.map && mid.material.map)};
 }
