@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="metal" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#65213c"/><stop offset=".32" stop-color="#231522"/><stop offset=".72" stop-color="#0a101c"/><stop offset="1" stop-color="#101725"/></linearGradient>
+ <linearGradient id="screen" x2="0" y2="1"><stop stop-color="#eb344c"/><stop offset="1" stop-color="#4a122d"/></linearGradient>
+ <filter id="glow"><feGaussianBlur stdDeviation="5" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<!-- Left wall machinery and overhead hanging cables; the rest stays translucent -->
+<path d="M0 0L265 0 180 900H0Z" fill="#080c17" opacity=".89"/>
+<path d="M0 0L1600 0 1600 102Q1130 130 900 72Q500 130 0 94Z" fill="#080d18" opacity=".89"/>
+<g stroke="#4b5366" stroke-width="16" fill="none">
+ <path d="M80 -10Q75 180 156 185T100 328"/><path d="M1220 0Q1190 80 1270 154T1250 305"/>
+ <path d="M915 0Q900 80 950 110"/><path d="M270 0Q225 110 290 162"/>
+</g>
+<g stroke="#ed385b" stroke-width="5" opacity=".8" filter="url(#glow)">
+ <path d="M5 126L220 157"/><path d="M1600 110Q1330 144 1100 85"/>
+</g>
+<path d="M18 188H210V620H0" fill="url(#metal)" stroke="#9e3550" stroke-width="9"/>
+<rect x="26" y="211" width="162" height="135" rx="5" fill="#130d1b" stroke="#eb4062" stroke-width="4"/>
+<g fill="#ec465c" opacity=".8">
+ <rect x="51" y="232" width="45" height="13"/><rect x="109" y="232" width="49" height="13"/>
+ <rect x="51" y="259" width="108" height="7"/><rect x="51" y="283" width="96" height="7"/>
+</g>
+<rect x="32" y="393" width="145" height="112" fill="#0b1321" stroke="#43566d" stroke-width="6"/>
+<circle cx="103" cy="449" r="38" fill="none" stroke="#e54662" stroke-width="9" opacity=".7"/>
+<path d="M75 456h57" stroke="#f79bb0" stroke-width="6"/>
+<!-- Bar patrons in graphic silhouettes -->
+<g fill="#0d0d1c" opacity=".96" stroke="#8b304b" stroke-width="3">
+ <path d="M344 735v-95q-35 -28 -30 -67q12 -70 73 -63q47 8 48 65q0 34 -30 66l5 94Z"/>
+ <path d="M480 760v-85q-46 -34 -28 -77q8 -46 55 -46q46 0 55 49q6 37 -30 72v86Z"/>
+ <path d="M999 740v-68q-33 -18 -28 -57q7 -50 55 -48q43 3 47 46q3 36 -25 61v65Z"/>
+</g>
+<!-- Motorcycle suspended on service mount to the right of the bar -->
+<g transform="translate(1230 610) scale(1.10)">
+ <path d="M-280 143H350" stroke="#25303a" stroke-width="20"/>
+ <g fill="#090d19" stroke="#455668" stroke-width="14">
+  <circle cx="-148" cy="100" r="80"/><circle cx="203" cy="100" r="82"/>
+ </g>
+ <g stroke="#ec3558" stroke-width="6" opacity=".9" filter="url(#glow)">
+  <circle cx="-148" cy="100" r="57" fill="none"/><circle cx="203" cy="100" r="59" fill="none"/>
+ </g>
+ <path d="M-179 4Q-78 -61 62 -50L215 15 245 76 130 52 32 25 -96 43Z" fill="url(#metal)" stroke="#e54262" stroke-width="8"/>
+ <path d="M-66 16L53 18 149 96H37L-35 69Z" fill="#141420" stroke="#a5435c" stroke-width="6"/>
+ <path d="M-47 -44Q44 -130 113 -81L137 -53Z" fill="#0b1420" stroke="#e24b61" stroke-width="6"/>
+ <path d="M-178 -2L-237 -28M117 -51l38 -60 54 -10" fill="none" stroke="#d1b3b2" stroke-width="10"/>
+ <path d="M-5 -7l70 -3" stroke="#ff6c82" stroke-width="9" filter="url(#glow)"/>
+ <path d="M-210 60L-270 43" stroke="#fcd2aa" stroke-width="11"/>
+</g>
+<!-- Near stools and round glasses with a little neon rim light -->
+<g fill="#0b0c16" stroke="#553248" stroke-width="5">
+ <path d="M225 780h130v24H225zm23 20v95h12v-95m74 0v95h12v-95"/>
+ <path d="M1490 770h100v20h-100zm20 20v106h12V790m46 0v106h12V790"/>
+</g>
+<path d="M230 770H370M1487 770H1598" stroke="#ec4066" stroke-width="4" filter="url(#glow)"/>
+</svg>
