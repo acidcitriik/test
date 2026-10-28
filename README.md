@@ -38,6 +38,20 @@ Ce prototype est une **expérimentation locale**, pas un produit esport final : 
 
 Le projet Unity 2017 original n'est pas utilisé ni modifié ; les graphismes sont entièrement procéduraux.
 
+## Engagements physiques
+
+Chaque point commence avec un **palet immobile**. Aucun coup initial n'est déclenché automatiquement.
+Le joueur engage le premier point en avançant sa raquette sur le palet placé dans sa moitié.
+Après un but, **le joueur qui a encaissé** effectue l'engagement suivant : le joueur avec la souris, ou l'IA via une collision réelle. L'affichage indique le serveur.
+Cette règle évite toute vitesse initiale imposée au palet.
+
+## Dégagements derrière la raquette IA
+
+Lorsque le palet glisse horizontalement derrière l'IA, celle-ci ne se contente plus de le suivre sur X.
+Elle tente de se placer **devant le palet** pour le frapper vers la **bande arrière** lorsqu'une bande existe au point d'impact (hors ouverture du but), puis de récupérer le rebond.
+Lorsque la trajectoire est dans l'ouverture du but, elle cherche un dégagement **latéral** plutôt que de tirer volontairement dans son propre but.
+Ces comportements restent des heuristiques déterministes : la vitesse et la trajectoire réelles résultent des collisions et non d'une impulsion ajoutée au palet.
+
 ## Tactique de l'IA locale
 
 L'IA n'est plus limitée à un seul contact par échange. Elle poursuit le palet tant qu'il reste jouable dans son camp :
