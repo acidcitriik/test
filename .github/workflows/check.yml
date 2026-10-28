@@ -16,6 +16,7 @@ jobs:
         run: |
           node --check src/physics.js
           node --check src/game.js
+          node --check src/mamouda-stage.js
           node --check src/controls.js
       - name: Run simulation tests
         run: node --test tests/*.test.mjs
@@ -25,3 +26,10 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Smoke test 3D game startup
         run: node tests/browser-smoke.mjs
+      - name: Upload Mamouda 2.5D screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mamouda-preview
+          path: mamouda-preview.png
+          if-no-files-found: ignore
