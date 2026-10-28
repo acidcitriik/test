@@ -51,7 +51,10 @@ const playerGlow=new THREE.PointLight(0x35e8ed,1.2,1.5);scene.add(playerGlow);
 const aiGlow=new THREE.PointLight(0xffb565,.95,1.5);scene.add(aiGlow);
 let active=false,lastTime=0,acc=0,sensitivity=1;
 function sync(){
-  playerObj.position.set(match.player.x,.16,match.player.z);
+  // Render the latest input target immediately, even when this display frame
+  // falls between 120 Hz physics steps. Physics catches up on its next tick.
+  playerObj.position.set(active?match.target.x:match.player.x,.16,
+    active?match.target.z:match.player.z);
   aiObj.position.set(match.ai.x,.16,match.ai.z);
   puckObj.position.set(match.puck.x,.11,match.puck.z);
   playerGlow.position.copy(playerObj.position);aiGlow.position.copy(aiObj.position);
