@@ -195,13 +195,16 @@ try {
     layers:window.__stageDiagnostics.backgroundLayers(),
     images:document.querySelectorAll('[data-mamouda-illustrated="true"] img').length,
     canvasInvisible:getComputedStyle(document.querySelector('#game')).opacity==='0',
-    farLeft:window.__stageDiagnostics.projected(-2.9,5),
-    nearRight:window.__stageDiagnostics.projected(2.9,-5)
+    farLeft:window.__stageDiagnostics.projected(2.9,5),
+    nearRight:window.__stageDiagnostics.projected(-2.9,-5),
+    screenLeft:window.__stageDiagnostics.projected(1,0),
+    screenRight:window.__stageDiagnostics.projected(-1,0)
   }));
   assert.equal(finalInfo.name,'mamouda-final');
   assert.equal(finalInfo.ready,true);
   assert.equal(finalInfo.layers,2);
   assert.equal(finalInfo.canvasInvisible,true);
+  assert.ok(finalInfo.screenRight.x>finalInfo.screenLeft.x, 'negative world X must be screen-right');
   assert.ok(finalInfo.farLeft.x<finalInfo.nearRight.x &&
     finalInfo.farLeft.y<finalInfo.nearRight.y,
     'table projection must respect image perspective');
@@ -219,6 +222,15 @@ try {
     const t=window.__gameDiagnostics.target();
     return Math.abs(t.x-initial.x)>.02||Math.abs(t.z-initial.z)>.02;
   },before,{timeout:4000});
+  const moved=await illustrated.evaluate(()=>{
+    const after=window.__gameDiagnostics.target();
+    const beforeProjection=window.__stageDiagnostics.projected(0,-2);
+    const afterProjection=window.__stageDiagnostics.projected(after.x,after.z);
+    return {target:after,afterProjection,beforeProjection};
+  });
+  assert.ok(moved.target.x<before.x, 'right mouse motion moves world X negative');
+  assert.ok(moved.afterProjection.x>moved.beforeProjection.x,
+    'right mouse motion visually moves mallet right, not left');
   await illustrated.screenshot({path:'mamouda-final-preview.png'});
   assert.deepEqual(illustratedErrors,[], 'final arena must not throw JS errors');
   await illustrated.close();
