@@ -86,20 +86,32 @@ try {
   assert.equal(await mobile.locator('#mobileControls').evaluate(e=>getComputedStyle(e).display),'flex');
   await mobile.locator('[data-touch-mode="grip"]').click();
   await mobile.waitForFunction(()=>document.querySelector('#contact')?.textContent==='ADHÉRENCE');
+  // Real Chromium touch gestures: synthetic PointerEvents did not exercise
+  // native TouchEvent delivery on Android, masking mobile regressions.
   const startTouch=await mobile.evaluate(()=>window.__gameDiagnostics.target());
-  await mobile.evaluate(()=>{
-    const canvas=document.querySelector('#game');
-    canvas.dispatchEvent(new PointerEvent('pointerdown',{pointerId:71,pointerType:'touch',clientX:180,clientY:550,bubbles:true,cancelable:true}));
-    canvas.dispatchEvent(new PointerEvent('pointermove',{pointerId:71,pointerType:'touch',clientX:240,clientY:480,bubbles:true,cancelable:true}));
-    canvas.dispatchEvent(new PointerEvent('pointerup',{pointerId:71,pointerType:'touch',bubbles:true,cancelable:true}));
+  const cdp=await mobile.context().newCDPSession(mobile);
+  await cdp.send('Input.dispatchTouchEvent',{
+    type:'touchStart',touchPoints:[{x:180,y:550,id:1}]
   });
+  for(let step=1;step<=6;step++){
+    await cdp.send('Input.dispatchTouchEvent',{
+      type:'touchMove',
+      touchPoints:[{x:180+10*step,y:550-12*step,id:1}]
+    });
+  }
+  await cdp.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   await mobile.waitForFunction(initial=>{
     const t=window.__gameDiagnostics.target();
     return t.x<initial.x-0.05 && t.z>initial.z+0.05;
-  },startTouch,{timeout:2500});
+  },startTouch,{timeout:4000});
+  await mobile.waitForFunction(()=>{
+    const p=window.__gameDiagnostics.player(),t=window.__gameDiagnostics.target();
+    return Math.abs(p.x-t.x)<1e-5&&Math.abs(p.z-t.z)<1e-5;
+  },null,{timeout:4000});
   const finalTouch=await mobile.evaluate(()=>({player:window.__gameDiagnostics.player(),target:window.__gameDiagnostics.target()}));
-  assert.ok(Math.abs(finalTouch.player.x-finalTouch.target.x)<1e-5);
-  assert.ok(Math.abs(finalTouch.player.z-finalTouch.target.z)<1e-5);
+  assert.ok(finalTouch.target.x<startTouch.x,'swipe to the right should move the paddle screen-right');
+  assert.ok(finalTouch.target.z>startTouch.z,'swipe upward should advance the paddle');
+  await cdp.detach();
   await mobile.locator('#mobilePause').click();
   assert.equal(await mobile.locator('#overlay').evaluate(e=>getComputedStyle(e).display),'grid');
   assert.deepEqual(mobileErrors,[]);
