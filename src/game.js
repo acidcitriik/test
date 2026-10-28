@@ -5,6 +5,13 @@ import {moveTargetWithMouse} from './controls.js';
 const canvas=document.getElementById('game'), overlay=document.getElementById('overlay');
 const playButton=document.getElementById('play');
 const match=new Match();
+// Read-only diagnostic snapshots for input responsiveness regression tests.
+// No mutable engine state is exposed to browser scripts.
+window.__gameDiagnostics = Object.freeze({
+  player: () => ({x:match.player.x,z:match.player.z,
+    vx:match.player.vx,vz:match.player.vz}),
+  target: () => ({x:match.target.x,z:match.target.z})
+});
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x080f1b);
 scene.fog=new THREE.FogExp2(0x080f1b,0.018);
