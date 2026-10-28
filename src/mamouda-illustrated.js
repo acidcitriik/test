@@ -87,7 +87,7 @@ export function createMamoudaIllustratedStage({canvas, match}) {
   const radiusPixels=(x,z,r)=>{
     const l=project(x-r,z),rr=project(x+r,z);
     const far=project(x,z+r),near=project(x,z-r);
-    return {rx:Math.max(2,(rr.x-l.x)/2),ry:Math.max(2,(near.y-far.y)/2)};
+    return {rx:Math.max(2,Math.abs(rr.x-l.x)/2),ry:Math.max(2,Math.abs(near.y-far.y)/2)};
   };
 
   function drawDisc(piece,color){
@@ -176,6 +176,7 @@ export function createMamoudaIllustratedStage({canvas, match}) {
     get ready(){return base.complete&&base.naturalWidth>0&&neon.complete&&neon.naturalWidth>0&&spriteAtlas.complete&&spriteAtlas.naturalWidth>0;},
     backgroundLayers:2,
     project,
+    displayRadius:(x,z,r)=>radiusPixels(x,z,r),
     destroy(){
       canvas.style.opacity=originalOpacity;
       document.body.classList.remove('illustrated-arena');
