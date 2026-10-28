@@ -1,6 +1,6 @@
 # Kinetic Duel — Prototype HTML 3D
 
-Prototype local jouable dans le navigateur : duel de palets **en 3D, caméra derrière la raquette face à l'adversaire**, contre une IA.
+Prototype local jouable dans le navigateur : duel de palets **en 3D, caméra derrière la raquette face à l'adversaire**, contre une IA capable d'intercepter, récupérer et jouer plusieurs fois le palet dans sa moitié.
 
 ## Lancement
 
@@ -24,9 +24,11 @@ Ce projet est statique : aucun serveur backend, compte ou installation npm n'est
 - `index.html` : interface et présentation du jeu.
 - `src/physics.js` : modèle de simulation XZ à pas fixe, indépendant du moteur graphique.
 - `src/game.js` : rendu Three.js 3D, caméra en perspective, entrées et HUD.
-- `tests/physics.test.mjs` : tests automatisés pour les règles physiques essentielles.
+- `src/ai.js` : logique tactique déterministe de l'adversaire, indépendante de la physique et du rendu.
+- `tests/physics.test.mjs`, `tests/ai*.test.mjs`, `tests/controls.test.mjs` : tests automatisés des collisions, de la tactique et des commandes.
+- `tests/browser-smoke.mjs` : lancement et mouvements testés dans un navigateur Chromium automatisé.
 
-Exécuter les tests avec `node --test tests/physics.test.mjs` (Node.js récent). Aucun package npm n'est requis.
+Exécuter tous les tests du moteur avec `npm test` (Node.js récent). Aucun package npm n'est requis pour les tests du moteur.
 
 ## Principes et limites
 
@@ -35,3 +37,15 @@ Le joueur contrôle une **position cible virtuelle** ; la raquette accélère et
 Ce prototype est une **expérimentation locale**, pas un produit esport final : pas de netcode, de classement, de mode PS5, de simulation garantie identique entre architectures ni de calibration matérielle absolue. Les unités et coefficients sont ajustables pour tester les sensations, sans prétendre reproduire fidèlement les matériaux d'une table de air hockey réelle. Le code charge Three.js depuis jsDelivr ; l'usage hors ligne exige une copie locale de la bibliothèque.
 
 Le projet Unity 2017 original n'est pas utilisé ni modifié ; les graphismes sont entièrement procéduraux.
+
+## Tactique de l'IA locale
+
+L'IA n'est plus limitée à un seul contact par échange. Elle poursuit le palet tant qu'il reste jouable dans son camp :
+
+- elle intercepte les trajectoires obliques et les mouvements presque horizontaux, y compris après rebond latéral ;
+- elle va chercher les palets ralentis ou arrêtés, même très près de son fond de table ;
+- elle peut effectuer une mise en position latérale, une frappe vers la bande, puis poursuivre le palet pour une autre frappe directe ;
+- elle recule pour protéger le but lorsque le palet quitte sa moitié ;
+- elle conserve la même simulation d'inertie, d'accélération, de contact et de vitesse que les autres raquettes, sans appliquer de vitesse artificielle au palet.
+
+La simulation et l'IA ne constituent pas encore un système de stratégie compétitive abouti. Les choix tactiques sont déterministes et restent à régler après des parties humaines.
