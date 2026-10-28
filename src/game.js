@@ -89,6 +89,23 @@ if(anyMamouda){
   floor.visible=false; // Prevent the huge neutral lab floor from masking painted bar layers.
   board.color.set(0x2a1728);
   rim.color.set(0x503047);
+  if(showMamoudaPainted){
+    // Purely visual: tune the existing table to the painted cyberpunk scene.
+    board.color.set(0x301629);
+    board.roughness=.14;
+    board.metalness=.48;
+    board.emissive.set(0x230718);
+    board.emissiveIntensity=.35;
+    rim.color.set(0x5a2038);
+    rim.metalness=.58;
+    rim.roughness=.27;
+    const paintedNeonRed=new THREE.MeshBasicMaterial({color:0xff385e,toneMapped:false});
+    const paintedNeonBlue=new THREE.MeshBasicMaterial({color:0x58cbf2,toneMapped:false});
+    box(.045,.024,L+.24,-w/2-.09,.31,0,paintedNeonBlue);
+    box(.045,.024,L+.24,w/2+.09,.31,0,paintedNeonRed);
+    box(g,.024,.045,0,.28,L/2+.12,paintedNeonRed);
+    box(g,.024,.045,0,.28,-L/2-.12,paintedNeonBlue);
+  }
   document.getElementById('brand').textContent='SYNTHPUCK // MAMOUDA';
   document.getElementById('dialogTitle').textContent='SYNTHPUCK — MAMOUDA';
   document.querySelector('.lead').textContent=showMamoudaPainted?'TEST 2.5D · ILLUSTRATION':'TEST 2.5D · BAR CAPSULES';
