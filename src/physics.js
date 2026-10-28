@@ -49,7 +49,7 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   // The paddle is modeled as a driven body with prescribed velocity.
   const relN = (puck.vx - paddle.vx) * nx + (puck.vz - paddle.vz) * nz;
   if (relN >= 0) return true;
-  const restitution = mode === 'rigid' ? 1.05 : mode === 'soft' ? .46 : mode === 'grip' ? .79 : cfg.paddleRestitution;
+  const restitution = mode === 'rigid' ? 0.99 : mode === 'soft' ? .46 : mode === 'grip' ? .79 : cfg.paddleRestitution;
   const impulseN = -(1 + restitution) * relN;
   puck.vx += impulseN * nx;
   puck.vz += impulseN * nz;
