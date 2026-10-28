@@ -71,6 +71,28 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
     return { x: 0, z: 3.52 };
   }
 
+  // A puck stranded behind the paddle near the end rail cannot be struck
+  // safely from behind: the motor cannot cross the goal line. Approach from
+  // its SIDE first, then sweep laterally. This also covers the corner cases
+  // where a completely motionless puck would otherwise remain forever.
+  if (onOwnHalf && deep && (slow || horizontal) && brain) {
+    if (brain.phase !== 'deepSetup' && brain.phase !== 'deepSweep') {
+      brain.bankSide = puck.x >= 0 ? -1 : 1; // work from the spacious side
+      setPhase(brain, 'deepSetup', now);
+    }
+    const side = brain.bankSide;
+    const setup = {
+      x: clampAI(puck.x + side * .82, minX, maxX),
+      z: maxZ
+    };
+    if (brain.phase === 'deepSetup') {
+      if (Math.hypot(ai.x - setup.x, ai.z - setup.z) < .12 &&
+          speedOf(ai) < 1.15) setPhase(brain, 'deepSweep', now);
+      else return setup;
+    }
+    return { x: clampAI(puck.x - side * .12, minX, maxX), z: maxZ };
+  }
+
   // Intentionally set up a side-rail play on an accessible nearly stationary
   // puck. Approach from behind and to the side, THEN strike. If the puck
   // starts moving, stop preparing and intercept it immediately.
