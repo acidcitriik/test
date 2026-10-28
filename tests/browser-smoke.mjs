@@ -93,6 +93,10 @@ try {
     'touch camera must look 20 degrees more downward than desktop');
   assert.ok(mobileCamera.y>desktopCamera.y&&mobileCamera.z>desktopCamera.z,
     'touch camera should rise and move toward the table without changing the target');
+  assert.ok(Math.abs(mobileCamera.tableNearEdgeFraction-.8)<.006,
+    'mobile portrait: near table edge should leave 20% of screen clear');
+  assert.ok(mobileCamera.tableFarEdgeFraction>0&&mobileCamera.tableFarEdgeFraction<.8,
+    'mobile portrait: far end of table must remain on screen');
 
   await mobile.locator('[data-touch-mode="grip"]').click();
   await mobile.waitForFunction(()=>document.querySelector('#contact')?.textContent==='ADHÉRENCE');
@@ -124,6 +128,13 @@ try {
   await cdp.detach();
   await mobile.locator('#mobilePause').click();
   assert.equal(await mobile.locator('#overlay').evaluate(e=>getComputedStyle(e).display),'grid');
+  // Rotation or window resize must recompute the free bottom fifth.
+  await mobile.setViewportSize({width:844,height:390});
+  const landscapeCamera=await mobile.evaluate(()=>window.__gameDiagnostics.camera());
+  assert.ok(Math.abs(landscapeCamera.tableNearEdgeFraction-.8)<.006,
+    'mobile landscape: bottom 20% must remain below the table');
+  assert.ok(Math.abs(landscapeCamera.downwardAngleDegrees-mobileCamera.downwardAngleDegrees)<1e-6,
+    'rotation must preserve the raised camera angle');
   assert.deepEqual(mobileErrors,[]);
   await mobile.close();
   console.log('Browser smoke passed:',JSON.stringify(state));
