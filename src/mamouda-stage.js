@@ -56,18 +56,14 @@ export function createMamoudaStage(THREE, scene) {
     return mesh;
   }
 
-  // Physical set dressing stays OUTSIDE the playing field (table width 5.8)
-  // and the visible puck path. Only cosmetic objects are added.
+  // Thin rear trusses emphasize parallax without obstructing table sightlines.
+  // The previous tall foreground bulkheads occluded too much of the bar.
   for (const side of [-1, 1]) {
-    const x = side * 5.6;
-    cuboid('bar-side-panel', 1.05, 3.8, 9.8, x, 0.9, 1.9, metal);
-    cuboid('bar-side-neon', .06, .055, 9.7,
-      x - side * .57, 2.79, 1.9, side === -1 ? blueNeon : redNeon);
-    for (const z of [-2.8, .2, 3.3]) {
-      cuboid('bar-post', .16, 4.4, .22, side * 6.1, 1.2, z, wornMetal);
-      cuboid('post-highlight', .04, 3.4, .04,
-        side * 5.99, 1.1, z, redNeon);
-    }
+    const x = side * 7.1;
+    cuboid('rear-truss', .19, 3.7, .23, x, 1.45, 8.4, metal);
+    cuboid('rear-neon-trim', .045, 3.3, .05,
+      x - side * .13, 1.43, 8.27, side === -1 ? blueNeon : redNeon);
+    cuboid('rear-rafter', 1.3, .14, .25, x - side * .5, 3.35, 8.4, wornMetal);
   }
 
   // A restrained red glow bounces on the set, NOT on the game physics.
