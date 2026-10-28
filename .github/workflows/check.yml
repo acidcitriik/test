@@ -16,8 +16,9 @@ jobs:
         run: |
           node --check src/physics.js
           node --check src/game.js
+          node --check src/controls.js
       - name: Run simulation tests
-        run: node --test tests/physics.test.mjs
+        run: node --test tests/*.test.mjs
       - name: Install headless Chromium driver
         run: |
           npm install --no-save playwright@1.56.1
