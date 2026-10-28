@@ -131,7 +131,7 @@ export class Match {
     this.ai = { x: 0, z: 3.8, vx: 0, vz: 0, side: 1 };
     this.aiBrain = createAIBrain();
     this.target = { x: 0, z: -3.8 };
-    this.puck = { x: 0, z: 0, vx: 0, vz: 0, spin: 0, lastImpact: null };
+    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, lastImpact: null }; // visible pre-serve rest position
     this.scores = [0, 0];
     this.state = 'ready';
     this.server = -1; // first engagement belongs to the player
