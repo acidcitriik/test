@@ -51,6 +51,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   const slow = speed < 1.15;
   const onOwnHalf = puck.z > .14;
   const outgoing = puck.vz < -1.5 && !horizontal && !slow;
+  const followingBank = brain?.phase === 'follow' && now - brain.lastImpact < 1.30 && onOwnHalf;
   const deep = puck.z > 4.10;
 
   if (brain && !brain.lastPuckOnAIHalf && onOwnHalf) {
@@ -65,7 +66,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
     setPhase(brain, 'defend', now);
     return { x: 0, z: 3.52 };
   }
-  if (outgoing && puck.z < 2.1) {
+  if (outgoing && puck.z < 2.1 && !followingBank) {
     setPhase(brain, 'defend', now);
     return { x: 0, z: 3.52 };
   }
@@ -137,11 +138,11 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   const planeTime = puck.vz > .15
     ? clampAI((targetZ - puck.z - cfg.paddleRadius) / Math.max(.4, puck.vz), 0, .85)
     : motorTime;
-  const leadTime = horizontal || slow ? motorTime : planeTime;
+  const leadTime = followingBank || horizontal || slow ? motorTime : planeTime;
   const projectedX = predictRailX(puck, leadTime, cfg);
 
   // Small intentional misalignment creates angled, physically authentic
   // strokes, including follow-up contacts after side-rail returns.
-  const offset = slow || horizontal ? (player.x > 0 ? .07 : -.07) : 0;
+  const offset = (slow || horizontal) && !followingBank ? (player.x > 0 ? .07 : -.07) : 0;
   return { x: clampAI(projectedX + offset, minX, maxX), z: targetZ };
 }
