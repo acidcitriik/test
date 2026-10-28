@@ -86,7 +86,8 @@ window.__stageDiagnostics=Object.freeze({
   name:showMamoudaFinal?'mamouda-final':showMamoudaPainted?'mamouda-painted':showMamouda?'mamouda':'lab',
   ready:()=>illustratedFx?illustratedFx.ready:stageFx?.ready()??true,
   backgroundLayers:()=>illustratedFx?.backgroundLayers??stageFx?.backgroundLayers??0,
-  projected:(x,z)=>illustratedFx?.project(x,z)??null
+  projected:(x,z)=>illustratedFx?.project(x,z)??null,
+  projectedRadius:(x,z,r)=>illustratedFx?.displayRadius(x,z,r)??null
 });
 if(anyMamouda){
   floor.material.color.set(0x090916);
