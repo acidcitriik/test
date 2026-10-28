@@ -1,4 +1,4 @@
-import { chooseAITarget } from './ai.js';
+import { chooseAITarget, createAIBrain, recordAIHit } from './ai.js';
 // Local gameplay simulation. X/Z is the table plane; the Three.js scene is 3D.
 // This deliberately does not depend on the renderer or frame rate.
 export const DEFAULTS = Object.freeze({
@@ -129,6 +129,7 @@ export class Match {
     this.cfg = { ...DEFAULTS, ...overrides };
     this.player = { x: 0, z: -3.8, vx: 0, vz: 0, side: -1 };
     this.ai = { x: 0, z: 3.8, vx: 0, vz: 0, side: 1 };
+    this.aiBrain = createAIBrain();
     this.target = { x: 0, z: -3.8 };
     this.puck = { x: 0, z: 0, vx: 0, vz: 0, spin: 0, lastImpact: null };
     this.scores = [0, 0];
@@ -152,6 +153,7 @@ export class Match {
     Object.assign(this.ai, { x: 0, z: 3.8, vx: 0, vz: 0 });
     Object.assign(this.target, { x: 0, z: -3.8 });
     this.rally = 0; this.state = 'playing';
+    this.aiBrain = createAIBrain();
     this.events.length = 0;
   }
   setButton(key, down) {
@@ -181,7 +183,7 @@ export class Match {
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
       moveToward(this.player, this.target, step, cfg);
-      const aiTarget = chooseAITarget(puck, this.ai, this.player, cfg);
+      const aiTarget = chooseAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
       moveToward(this.ai, aiTarget, step, cfg, true);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
@@ -191,6 +193,7 @@ export class Match {
       ]) {
         if (collidePaddle(puck, paddle, cfg, mode)) {
           this.hits++; this.rally++;
+          if (label === 'ai') recordAIHit(this.aiBrain, this.time);
           this.record({ type: 'impact', by: label, ...puck.lastImpact });
           puck.lastImpact = null;
         }
