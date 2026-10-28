@@ -18,6 +18,7 @@ jobs:
           node --check src/game.js
           node --check src/mamouda-stage.js
           node --check src/mamouda-painted-stage.js
+          node --check src/mamouda-illustrated.js
           node --check src/controls.js
       - name: Run simulation tests
         run: node --test tests/*.test.mjs
@@ -35,4 +36,5 @@ jobs:
           path: |
             mamouda-preview.png
             mamouda-painted-preview.png
+            mamouda-final-preview.png
           if-no-files-found: ignore
