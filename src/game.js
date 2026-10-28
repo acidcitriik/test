@@ -1,6 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import {Match, magnitude, clamp} from './physics.js';
-import {moveTargetWithMouse} from './controls.js';
+import {moveTargetWithMouse, moveTargetWithTouch} from './controls.js';
 
 const canvas=document.getElementById('game'), overlay=document.getElementById('overlay');
 const playButton=document.getElementById('play');
@@ -50,6 +50,45 @@ const playerObj=cylinder(match.cfg.paddleRadius,.24,0x58e5e9),aiObj=cylinder(mat
 const playerGlow=new THREE.PointLight(0x35e8ed,1.2,1.5);scene.add(playerGlow);
 const aiGlow=new THREE.PointLight(0xffb565,.95,1.5);scene.add(aiGlow);
 let active=false,lastTime=0,acc=0,sensitivity=1;
+
+const isTouchDevice=window.matchMedia('(pointer:coarse)').matches || ('ontouchstart' in window);
+if(isTouchDevice)document.body.classList.add('touch-mode');
+let touchPointer=null,lastTouchX=0,lastTouchY=0,touchMode='normal';
+function applyTouchMode(mode){
+  touchMode=mode;
+  match.setButton('left',mode==='rigid'||mode==='grip');
+  match.setButton('right',mode==='soft'||mode==='grip');
+  document.querySelectorAll('[data-touch-mode]').forEach(button=>{
+    button.classList.toggle('selected',button.dataset.touchMode===mode);
+    button.setAttribute('aria-pressed',String(button.dataset.touchMode===mode));
+  });
+}
+document.querySelectorAll('[data-touch-mode]').forEach(button=>{
+  button.addEventListener('click',()=>applyTouchMode(button.dataset.touchMode));
+});
+document.getElementById('mobilePause').addEventListener('click',()=>{
+  if(active)show('PAUSE','Reprends quand tu veux.','REPRENDRE');
+});
+function clearTouch(){touchPointer=null;}
+canvas.addEventListener('pointerdown',event=>{
+  if(!isTouchDevice||!active||event.pointerType!=='touch'||touchPointer!==null)return;
+  event.preventDefault();
+  touchPointer=event.pointerId;lastTouchX=event.clientX;lastTouchY=event.clientY;
+  canvas.setPointerCapture?.(event.pointerId);
+});
+canvas.addEventListener('pointermove',event=>{
+  if(!active||event.pointerType!=='touch'||event.pointerId!==touchPointer)return;
+  event.preventDefault();
+  const dx=event.clientX-lastTouchX,dy=event.clientY-lastTouchY;
+  lastTouchX=event.clientX;lastTouchY=event.clientY;
+  const rect=canvas.getBoundingClientRect();
+  const target=moveTargetWithTouch(match.target,dx,dy,rect.width,rect.height,sensitivity,match.cfg);
+  match.target.x=target.x;match.target.z=target.z;
+});
+for(const name of ['pointerup','pointercancel','lostpointercapture']){
+  canvas.addEventListener(name,event=>{if(event.pointerId===touchPointer)clearTouch();});
+}
+
 function sync(){
   // Render the latest input target immediately, even when this display frame
   // falls between 120 Hz physics steps. Physics catches up on its next tick.
@@ -70,11 +109,11 @@ function sync(){
   document.getElementById('contact').textContent=({normal:'NATUREL',rigid:'RIGIDE',soft:'AMORTI',grip:'ADHÉRENCE'})[match.impactMode()];
 
 }
-function show(title,description,button){active=false;match.setButton('left',false);match.setButton('right',false);document.exitPointerLock?.();overlay.hidden=false;overlay.style.display='grid';document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=description;playButton.textContent=button;}
-function start(){if(match.state==='over')match.reset();if(match.state==='ready')match.serve();overlay.hidden=true;overlay.style.display='none';active=true;acc=0;const promise=canvas.requestPointerLock?.();if(promise?.catch)promise.catch(()=>show('SOURIS NON VERROUILLÉE','Autorise la capture de la souris dans ce navigateur pour jouer.','RÉESSAYER'));}
+function show(title,description,button){active=false;clearTouch();match.setButton('left',false);match.setButton('right',false);document.exitPointerLock?.();overlay.hidden=false;overlay.style.display='grid';document.getElementById('dialogTitle').textContent=title;document.getElementById('dialogText').textContent=description;playButton.textContent=button;}
+function start(){if(match.state==='over')match.reset();if(match.state==='ready')match.serve();overlay.hidden=true;overlay.style.display='none';active=true;acc=0;if(isTouchDevice){applyTouchMode(touchMode);return;}const promise=canvas.requestPointerLock?.();if(promise?.catch)promise.catch(()=>show('SOURIS NON VERROUILLÉE','Autorise la capture de la souris dans ce navigateur pour jouer.','RÉESSAYER'));}
 playButton.addEventListener('click',start);
-canvas.addEventListener('click',()=>{if(active && document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==canvas && active)show('PAUSE','Le duel est en pause. Reprends quand tu veux.','REPRENDRE');});
+canvas.addEventListener('click',()=>{if(active && !isTouchDevice && document.pointerLockElement!==canvas)canvas.requestPointerLock?.();});
+document.addEventListener('pointerlockchange',()=>{if(!isTouchDevice && document.pointerLockElement!==canvas && active)show('PAUSE','Le duel est en pause. Reprends quand tu veux.','REPRENDRE');});
 document.addEventListener('mousemove',e=>{if(!active||document.pointerLockElement!==canvas)return;
 // Camera-right is world -X; preserve the existing forward/backward axis.
 const target=moveTargetWithMouse(match.target,e.movementX,e.movementY,sensitivity,match.cfg);
