@@ -34,22 +34,7 @@ export function createMamoudaPaintedStage(THREE, scene, camera) {
   }
   resize();
 
-  // Separate decorative 3D layer; nothing touches the physical play surface.
-  const casing = new THREE.MeshStandardMaterial({
-    color: 0x281525, roughness: .48, metalness: .45
-  });
-  const neon = new THREE.MeshBasicMaterial({
-    color: 0xff365c, toneMapped: false
-  });
-  for (const side of [-1, 1]) {
-    const post = new THREE.Mesh(new THREE.BoxGeometry(.08, 2.7, .08), casing);
-    post.position.set(side * 6.65, 1.3, 7.4);
-    post.name = 'far-3d-rig';
-    group.add(post);
-    const strip = new THREE.Mesh(new THREE.BoxGeometry(.04, 2.55, .04), neon);
-    strip.position.set(side * 6.6, 1.3, 7.35);
-    group.add(strip);
-  }
+  // Painted art is kept unobstructed. Separate 3D lights tint the actual table.
   const red = new THREE.PointLight(0xf62255, 8.5, 15, 2);
   red.position.set(4.3, 4, 4.4);
   group.add(red);
