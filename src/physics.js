@@ -52,7 +52,9 @@ export function prepareDirectMove(p, target, dt, cfg) {
   const margin = cfg.paddleRadius + .07;
   const x = clamp(target.x, -cfg.width/2+margin, cfg.width/2-margin);
   const z = clamp(target.z, -cfg.length/2+margin, -margin/2);
-  const dx = x-p.x, dz = z-p.z;
+  // Ignore sub-nanometric floating-point residue after reaching the target.
+  const dx = Math.abs(x-p.x)<1e-9 ? 0 : x-p.x;
+  const dz = Math.abs(z-p.z)<1e-9 ? 0 : z-p.z;
   const rawSpeed = magnitude(dx,dz)/dt;
   const factor = rawSpeed > cfg.maxSpeed ? cfg.maxSpeed/rawSpeed : 1;
   return { fromX:p.x, fromZ:p.z, dx, dz,
