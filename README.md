@@ -67,3 +67,17 @@ La simulation et l'IA ne constituent pas encore un système de stratégie compé
 ## Réactivité du contrôle
 
 Le contrôle local ne comporte plus de traînage artificiel : lorsque la souris change de direction, la raquette suit la nouvelle cible au pas de simulation suivant. Le jeu doit toujours attendre le prochain rafraîchissement du navigateur/écran pour afficher le mouvement, ce qui n'est pas une latence absolument nulle au sens matériel. Le moteur balaie le chemin de déplacement pendant le pas de physique pour éviter qu'un mouvement brusque traverse le palet sans collision. Les impulsions utilisent une vitesse de raquette plafonnée, même pour les très grands déplacements.
+
+
+## Version de référence de l'IA : 2501
+
+Le comportement actuel de l'adversaire est **figé sous le nom de code 2501**.
+
+- Branche de sauvegarde : [`ai-2501`](https://github.com/acidcitriik/test/tree/ai-2501)
+- Commit de référence : [`43eb759`](https://github.com/acidcitriik/test/commit/43eb759a5e09cb5ec945ce542bb49888d8405903)
+- Source tactique : `src/ai.js` (blob `1288bdf97a093735b870d0f672f6f7f04a7df478`)
+- La référence inclut les paramètres moteurs et physiques de `src/physics.js`, les tests IA et l'ensemble du prototype à ce commit.
+
+**Règle de développement :** conserver la branche `ai-2501` inchangée.
+Les évolutions de l'IA se font sur une autre branche ou sur `main` ; le comportement 2501 reste disponible comme base de comparaison et de restauration.
+Cette sauvegarde ne change pas la version actuellement jouable.
