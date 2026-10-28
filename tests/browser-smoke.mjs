@@ -72,6 +72,38 @@ try {
   assert.ok(/m\/s/.test(state.puck),'telemetry should update');
   assert.equal(state.error,'','startup error overlay should be empty');
   assert.deepEqual(errors,[], 'browser console should have no JavaScript page errors');
+  // Mobile emulation: touch must start without pointer lock and move the paddle.
+  const mobile=await browser.newPage({
+    viewport:{width:390,height:844},deviceScaleFactor:1,
+    isMobile:true,hasTouch:true
+  });
+  const mobileErrors=[];
+  mobile.on('pageerror',e=>mobileErrors.push(e.message));
+  await mobile.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
+  await mobile.locator('#play').click();
+  await mobile.waitForFunction(()=>getComputedStyle(document.querySelector('#overlay')).display==='none');
+  assert.equal(await mobile.evaluate(()=>document.pointerLockElement),null);
+  assert.equal(await mobile.locator('#mobileControls').evaluate(e=>getComputedStyle(e).display),'flex');
+  await mobile.locator('[data-touch-mode="grip"]').click();
+  await mobile.waitForFunction(()=>document.querySelector('#contact')?.textContent==='ADHÉRENCE');
+  const startTouch=await mobile.evaluate(()=>window.__gameDiagnostics.target());
+  await mobile.evaluate(()=>{
+    const canvas=document.querySelector('#game');
+    canvas.dispatchEvent(new PointerEvent('pointerdown',{pointerId:71,pointerType:'touch',clientX:180,clientY:550,bubbles:true,cancelable:true}));
+    canvas.dispatchEvent(new PointerEvent('pointermove',{pointerId:71,pointerType:'touch',clientX:240,clientY:480,bubbles:true,cancelable:true}));
+    canvas.dispatchEvent(new PointerEvent('pointerup',{pointerId:71,pointerType:'touch',bubbles:true,cancelable:true}));
+  });
+  await mobile.waitForFunction(initial=>{
+    const t=window.__gameDiagnostics.target();
+    return t.x<initial.x-0.05 && t.z>initial.z+0.05;
+  },startTouch,{timeout:2500});
+  const finalTouch=await mobile.evaluate(()=>({player:window.__gameDiagnostics.player(),target:window.__gameDiagnostics.target()}));
+  assert.ok(Math.abs(finalTouch.player.x-finalTouch.target.x)<1e-5);
+  assert.ok(Math.abs(finalTouch.player.z-finalTouch.target.z)<1e-5);
+  await mobile.locator('#mobilePause').click();
+  assert.equal(await mobile.locator('#overlay').evaluate(e=>getComputedStyle(e).display),'grid');
+  assert.deepEqual(mobileErrors,[]);
+  await mobile.close();
   console.log('Browser smoke passed:',JSON.stringify(state));
 } finally {
   if(browser)await browser.close();
