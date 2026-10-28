@@ -6,7 +6,7 @@ import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright';
 
 const root = resolve(import.meta.dirname, '..');
-const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.svg':'image/svg+xml; charset=utf-8' };
+const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.svg':'image/svg+xml; charset=utf-8', '.webp':'image/webp' };
 const server = http.createServer(async(req,res)=>{
   try {
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -177,6 +177,51 @@ try {
   await painted.screenshot({path:'mamouda-painted-preview.png'});
   assert.deepEqual(paintedErrors,[],'illustrated scene must not throw JS errors');
   await painted.close();
+  // Final approved image: the 3D table is NOT painted on the screen.
+  // Its authoritative XZ physics remains active; mobile props are
+  // projected onto the illustrated plane.
+  const illustrated=await browser.newPage({viewport:{width:1366,height:768}});
+  const illustratedErrors=[],illustratedFailures=[];
+  illustrated.on('pageerror',error=>illustratedErrors.push(error.message));
+  illustrated.on('response',response=>{
+    if(response.status()>=400)illustratedFailures.push(response.url());
+  });
+  await illustrated.goto('http://127.0.0.1:'+port+'/?stage=mamouda-final&calibrate=1',
+    {waitUntil:'networkidle'});
+  await illustrated.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:15000});
+  const finalInfo=await illustrated.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    ready:window.__stageDiagnostics.ready(),
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    images:document.querySelectorAll('[data-mamouda-illustrated="true"] img').length,
+    canvasInvisible:getComputedStyle(document.querySelector('#game')).opacity==='0',
+    farLeft:window.__stageDiagnostics.project(-2.9,5),
+    nearRight:window.__stageDiagnostics.project(2.9,-5)
+  }));
+  assert.equal(finalInfo.name,'mamouda-final');
+  assert.equal(finalInfo.ready,true);
+  assert.equal(finalInfo.layers,2);
+  assert.equal(finalInfo.canvasInvisible,true);
+  assert.ok(finalInfo.farLeft.x<finalInfo.nearRight.x &&
+    finalInfo.farLeft.y<finalInfo.nearRight.y,
+    'table projection must respect image perspective');
+  assert.deepEqual(illustratedFailures,[],'illustrated assets must be reachable');
+  await illustrated.locator('#play').click();
+  await illustrated.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  const before=await illustrated.evaluate(()=>window.__gameDiagnostics.target());
+  await illustrated.evaluate(()=>{
+    const event=new MouseEvent('mousemove',{bubbles:true});
+    Object.defineProperty(event,'movementX',{value:75});
+    Object.defineProperty(event,'movementY',{value:-30});
+    document.dispatchEvent(event);
+  });
+  await illustrated.waitForFunction(initial=>{
+    const t=window.__gameDiagnostics.target();
+    return Math.abs(t.x-initial.x)>.02||Math.abs(t.z-initial.z)>.02;
+  },before,{timeout:4000});
+  await illustrated.screenshot({path:'mamouda-final-preview.png'});
+  assert.deepEqual(illustratedErrors,[], 'final arena must not throw JS errors');
+  await illustrated.close();
   console.log('Browser smoke passed:',JSON.stringify(state),
     'Mamouda:',JSON.stringify(stageInfo),'Painted:',JSON.stringify(paintedInfo));
 } finally {
