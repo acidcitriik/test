@@ -69,11 +69,11 @@ rinkRing(0,0,.88,0x66c9d7);rinkRing(0,-3.6,.85,0x45b4be);rinkRing(0,3.6,.85,0xdd
 const floor=box(120,.25,120,0,-.9,0,mat(0x09111f,.03,.88));
 const grid=new THREE.GridHelper(90,50,0x13273a,0x13273a);grid.position.y=-.76;if(!showMamouda)scene.add(grid);
 if(!showMamouda)for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(.3,4,.3,Math.cos(a)*11,1,Math.sin(a)*10,mat(0x172c46,.6,.5));}
-const stageFx=showMamouda?createMamoudaStage(THREE,scene):null;
+const stageFx=showMamouda?createMamoudaStage(THREE,scene,camera):null;
 window.__stageDiagnostics=Object.freeze({
   name:showMamouda?'mamouda':'lab',
   ready:()=>stageFx?.ready()??true,
-  backgroundLayers:()=>stageFx?stageFx.group.children.filter(x=>x.name==='neon-bar-back-wall'||x.name==='neon-bar-midground').length:0
+  backgroundLayers:()=>stageFx?.backgroundLayers??0
 });
 if(showMamouda){
   floor.material.color.set(0x090916);
@@ -207,6 +207,7 @@ function resize(){
   const width=innerWidth,height=innerHeight;
   camera.aspect=width/height;
   camera.fov=height>width?66:55;
+  stageFx?.resize();
   updateCameraFraming(width,height);
   renderer.setSize(width,height,false);
 }
