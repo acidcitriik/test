@@ -157,7 +157,28 @@ try {
   await stage.screenshot({path:'mamouda-preview.png'});
   assert.deepEqual(stageErrors,[],'Mamouda stage must not produce JS errors');
   await stage.close();
-  console.log('Browser smoke passed:',JSON.stringify(state),'Mamouda:',JSON.stringify(stageInfo));
+  // Illustrated variant: actual embedded painting, no duplicate painted table.
+  const painted=await browser.newPage({viewport:{width:1366,height:768}});
+  const paintedErrors=[],paintedFailed=[];
+  painted.on('pageerror',error=>paintedErrors.push(error.message));
+  painted.on('response',response=>{if(response.status()>=400)paintedFailed.push(response.url());});
+  await painted.goto('http://127.0.0.1:'+port+'/?stage=mamouda-painted',{waitUntil:'networkidle'});
+  await painted.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:12000});
+  const paintedInfo=await painted.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    ready:window.__stageDiagnostics.ready()
+  }));
+  assert.deepEqual(paintedInfo,{name:'mamouda-painted',layers:1,ready:true},
+    'Illustrated Mamouda must load the raster painting');
+  assert.deepEqual(paintedFailed,[],'painted assets must load without HTTP errors');
+  await painted.locator('#play').click();
+  await painted.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  await painted.screenshot({path:'mamouda-painted-preview.png'});
+  assert.deepEqual(paintedErrors,[],'illustrated scene must not throw JS errors');
+  await painted.close();
+  console.log('Browser smoke passed:',JSON.stringify(state),
+    'Mamouda:',JSON.stringify(stageInfo),'Painted:',JSON.stringify(paintedInfo));
 } finally {
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));
