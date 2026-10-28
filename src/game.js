@@ -15,7 +15,10 @@ window.__gameDiagnostics = Object.freeze({
     x:camera.position.x,y:camera.position.y,z:camera.position.z,
     downwardAngleDegrees:Math.atan2(
       camera.position.y-.12,1.25-camera.position.z
-    )*180/Math.PI
+    )*180/Math.PI,
+    // Fraction of viewport measured from top; .8 leaves 20% empty below.
+    tableNearEdgeFraction:(1-new THREE.Vector3(0,-.27,-match.cfg.length/2-.25).project(camera).y)/2,
+    tableFarEdgeFraction:(1-new THREE.Vector3(0,-.27,match.cfg.length/2+.25).project(camera).y)/2
   })
 });
 const scene=new THREE.Scene();
@@ -78,7 +81,11 @@ let mobileCameraEnabled=false;
 function enableTouchUI(){
   isTouchDevice=true;
   document.body.classList.add('touch-mode');
-  if(!mobileCameraEnabled){setMobileCameraAngle();mobileCameraEnabled=true;}
+  if(!mobileCameraEnabled){
+    setMobileCameraAngle();
+    mobileCameraEnabled=true;
+    resize(); // Also recalibrate if touch is first detected after page load.
+  }
 }
 if(isTouchDevice)enableTouchUI();
 // Some embedded browsers report no touch capability until their first gesture.
@@ -167,6 +174,26 @@ window.addEventListener('blur',()=>{match.setButton('left',false);match.setButto
 document.addEventListener('keydown',e=>{if(e.code==='KeyR'){match.reset();show('NOUVEAU MATCH','Premier à sept points.','JOUER');}if(e.code==='Space'){e.preventDefault();if(!active)start();}if(e.code==='Escape'&&active)show('PAUSE','Reprends quand tu veux.','REPRENDRE');});
 const settings=[['sensitivity','sensValue',v=>sensitivity=v],['speed','speedValue',v=>match.cfg.maxSpeed=v],['accel','accelValue',v=>match.cfg.aiAcceleration=v],['bounce','bounceValue',v=>match.cfg.wallRestitution=v],['friction','frictionValue',v=>match.cfg.friction=v],['ai','aiValue',v=>match.cfg.aiSpeed=v]];
 for(const[id,out,action]of settings){const el=document.getElementById(id);el.addEventListener('input',()=>{const v=Number(el.value);action(v);document.getElementById(out).textContent=String(v);});}
-function resize(){const width=innerWidth,height=innerHeight;camera.aspect=width/height;camera.fov=height>width?66:55;camera.updateProjectionMatrix();renderer.setSize(width,height,false);}addEventListener('resize',resize);resize();
+// Shift only the MOBILE projection upward (not the world or the physics).
+// The outer near rim should end at 80% of the viewport: 20% remains free
+// underneath for the user's finger and the touch control bar.
+// A frustum offset retains the existing 20-degree-raised camera angle.
+function updateCameraFraming(width,height){
+  camera.clearViewOffset();
+  if(!isTouchDevice)return;
+  camera.updateMatrixWorld(true);
+  const nearRim=new THREE.Vector3(0,-.27,-match.cfg.length/2-.25);
+  const nearScreenY=(1-nearRim.project(camera).y)/2;
+  const offsetPixels=(nearScreenY-.8)*height;
+  camera.setViewOffset(width,height,0,offsetPixels,width,height);
+}
+function resize(){
+  const width=innerWidth,height=innerHeight;
+  camera.aspect=width/height;
+  camera.fov=height>width?66:55;
+  updateCameraFraming(width,height);
+  renderer.setSize(width,height,false);
+}
+addEventListener('resize',resize);resize();
 function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal');show(last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA','Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();renderer.render(scene,camera);}
 requestAnimationFrame(frame);
