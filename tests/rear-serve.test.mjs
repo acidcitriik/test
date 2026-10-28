@@ -56,7 +56,7 @@ test('a ball behind AI and outside the goal mouth can be cleared toward the rear
   assert.ok(r.impacts.length>0,'AI failed to recover');
   assert.ok(r.impacts[0].vz>1,'AI should initially strike towards +Z, not shadow X');
   assert.equal(r.rearBounce,true,'puck must reflect off actual rear band');
-  assert.equal(r.m.scores[1],0,'AI must not shoot the puck into its own goal');
+  assert.equal(r.m.scores[0],0,'AI must not shoot the puck into its own goal');
 });
 
 test('AI recovers a horizontally moving puck that passed behind the paddle',()=>{
