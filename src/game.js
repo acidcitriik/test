@@ -77,6 +77,8 @@ window.__stageDiagnostics=Object.freeze({
 });
 if(showMamouda){
   floor.material.color.set(0x090916);
+  board.color.set(0x2a1728);
+  rim.color.set(0x503047);
   document.getElementById('brand').textContent='SYNTHPUCK // MAMOUDA';
   document.getElementById('dialogTitle').textContent='SYNTHPUCK — MAMOUDA';
   document.querySelector('.lead').textContent='TEST 2.5D · BAR CAPSULES';
