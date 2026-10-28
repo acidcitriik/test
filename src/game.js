@@ -27,7 +27,7 @@ const {width:w,length:L,goalWidth:g}=match.cfg;
 box(w+.42,.28,L+.5,0,-.27,0,mat(0x111d2c,.7,.27));
 box(w,.12,L,0,-.06,0,board);
 box(.16,.37,L+.3,-w/2-.09,.10,0,rim);box(.16,.37,L+.3,w/2+.09,.10,0,rim);
-for(const side of [-1,1]){const z=side*(L/2+.06);const wallLength=(w-g)/2;for(const sx of [-1,1])box(wallLength,.33,.16,sx*(g+wallLength)/4,.08,z,rim);}
+for(const side of [-1,1]){const z=side*(L/2+.06);const wallLength=(w-g)/2;for(const sx of [-1,1])box(wallLength,.33,.16,sx*(g+w)/4,.08,z,rim);}
 box(g,.04,.35,0,-.08,-L/2-.19,mat(0x54dce1,.1,.3,0x267e87));
 box(g,.04,.35,0,-.08,L/2+.19,mat(0xfab777,.1,.3,0x804629));
 box(.035,.006,L,0,.007,0,new THREE.MeshBasicMaterial({color:0x3c6377}));
