@@ -85,5 +85,5 @@ export function createMamoudaStage(THREE, scene) {
     far.position.x = Math.sin(timeSeconds * .15) * .016;
     mid.position.x = Math.sin(timeSeconds * .15 + .7) * .026;
   }
-  return {group, update};
+  return {group, update, ready: () => Boolean(far.material.map && mid.material.map)};
 }
