@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+<defs>
+ <linearGradient id="wall" x2="0" y2="1"><stop stop-color="#090d1f"/><stop offset=".42" stop-color="#231229"/><stop offset="1" stop-color="#070a12"/></linearGradient>
+ <linearGradient id="pink" x2="0" y2="1"><stop stop-color="#ff3768"/><stop offset="1" stop-color="#8d123f"/></linearGradient>
+ <linearGradient id="counter" x2="0" y2="1"><stop stop-color="#641b3d"/><stop offset=".24" stop-color="#210f25"/><stop offset="1" stop-color="#080e16"/></linearGradient>
+ <radialGradient id="glow"><stop stop-color="#ff2861" stop-opacity=".32"/><stop offset="1" stop-color="#ff2861" stop-opacity="0"/></radialGradient>
+ <filter id="neon"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+ <pattern id="brick" width="100" height="44" patternUnits="userSpaceOnUse"><path d="M0 0H100 M0 22H100 M50 0V22 M0 22V44" fill="none" stroke="#4d2440" stroke-width="3" opacity=".38"/></pattern>
+ <pattern id="scratches" width="130" height="120" patternUnits="userSpaceOnUse"><path d="M16 20l25 -5m42 53l15 -9M50 105l24 -7" stroke="#f6b2ba" stroke-width="1.5" opacity=".14"/></pattern>
+ <g id="bottle"><path d="M-6 0v-15h12v15l9 11v55h-30V11z" fill="#06202b" stroke="#43b9b8" stroke-width="2"/><rect x="-10" y="25" width="20" height="15" fill="#ae365f"/><path d="M-9 5h18" stroke="#a4f5de" stroke-width="3"/></g>
+</defs>
+<rect width="1600" height="900" fill="url(#wall)"/>
+<rect y="60" width="1600" height="750" fill="url(#brick)"/>
+<rect width="1600" height="900" fill="url(#scratches)"/>
+<ellipse cx="1230" cy="300" rx="410" ry="300" fill="url(#glow)"/>
+<path d="M0 0H1600V94L1536 114H60L0 70Z" fill="#080b16" stroke="#355063" stroke-width="6"/>
+<path d="M0 132H1600M0 177H1600" stroke="#141f2b" stroke-width="24"/>
+<path d="M0 155H1600" stroke="#d93b63" stroke-width="5" opacity=".8"/>
+<g stroke="#273b49" stroke-width="9" fill="none">
+ <path d="M50 0V390M188 0V320M740 0V250M1310 0V395M1518 0V330"/>
+ <path d="M0 245H490M1110 245H1600"/>
+</g>
+<g fill="#0e1b24" stroke="#436479" stroke-width="5">
+ <rect x="18" y="180" width="470" height="334" rx="8"/>
+ <rect x="40" y="200" width="425" height="295" rx="4" fill="#151a36"/>
+</g>
+<!-- Oversized video screen, with original comic face and scanlines -->
+<path d="M112 468Q94 314 198 262Q328 213 388 315L390 471Z" fill="#a22948"/>
+<path d="M150 466Q132 333 225 290Q335 278 353 379L327 469Z" fill="#f07479"/>
+<path d="M159 355Q220 240 336 317Q315 290 290 288Q234 275 188 321Z" fill="#111727"/>
+<path d="M156 360Q210 284 311 300Q315 336 346 355Q310 332 274 328L215 351Z" fill="#10121e"/>
+<path d="M180 389l64 -8m24 -1l61 -5" stroke="#141425" stroke-width="10"/>
+<path d="M181 397q35 -17 61 -5m27 -5q31 -16 58 -2" stroke="#f6d3d7" stroke-width="5" fill="none"/>
+<path d="M211 431q56 16 93 -4" stroke="#551b32" stroke-width="6" fill="none"/>
+<g opacity=".17" stroke="#aff7fb" stroke-width="2"><path d="M50 250H455M50 285H455M50 320H455M50 355H455M50 390H455M50 425H455M50 460H455"/></g>
+<rect x="55" y="208" width="150" height="21" fill="#101e2a"/>
+<text x="66" y="224" font-size="15" font-family="monospace" fill="#7adbe5">NEO TOKYO :: 04</text>
+<!-- Stage shelves -->
+<rect x="470" y="250" width="630" height="420" fill="#0b0e1c" stroke="#422d43" stroke-width="14"/>
+<path d="M490 375H1080M490 500H1080M490 615H1080" stroke="#a43759" stroke-width="12"/>
+<path d="M490 384H1080M490 509H1080M490 624H1080" stroke="#e85c89" stroke-width="3"/>
+<g opacity=".96">
+ <use href="#bottle" x="538" y="306"/><use href="#bottle" x="589" y="308"/><use href="#bottle" x="646" y="305"/><use href="#bottle" x="694" y="308"/>
+ <use href="#bottle" x="766" y="303"/><use href="#bottle" x="814" y="306"/><use href="#bottle" x="865" y="300"/><use href="#bottle" x="948" y="302"/><use href="#bottle" x="1013" y="310"/>
+ <use href="#bottle" x="544" y="432"/><use href="#bottle" x="620" y="435"/><use href="#bottle" x="704" y="437"/><use href="#bottle" x="780" y="431"/><use href="#bottle" x="845" y="436"/><use href="#bottle" x="910" y="433"/><use href="#bottle" x="992" y="430"/>
+ <use href="#bottle" x="553" y="548"/><use href="#bottle" x="617" y="547"/><use href="#bottle" x="691" y="543"/><use href="#bottle" x="763" y="548"/><use href="#bottle" x="846" y="544"/><use href="#bottle" x="921" y="541"/><use href="#bottle" x="994" y="546"/>
+</g>
+<!-- Capsule logo, no Japanese writing -->
+<rect x="1160" y="190" width="360" height="340" rx="18" fill="#0d1020" stroke="#a62c57" stroke-width="12"/>
+<ellipse cx="1340" cy="358" rx="169" ry="170" fill="url(#glow)"/>
+<g transform="translate(1340 355) rotate(-42)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+ <rect x="-127" y="-52" width="254" height="104" rx="52" fill="#191024" stroke="#ff315f" stroke-width="14" filter="url(#neon)"/>
+ <path d="M0 -49V49" stroke="#ffb5cd" stroke-width="12" filter="url(#neon)"/>
+ <path d="M-70 -30H-97Q-110 -23 -109 -7" stroke="#ff8ca5" stroke-width="6"/>
+</g>
+<path d="M1110 192H1540" stroke="#4a3347" stroke-width="5"/>
+<!-- industrial counter and stool silhouettes, partly covered by nearer layer -->
+<path d="M0 686H1600V900H0Z" fill="url(#counter)" stroke="#af3b61" stroke-width="8"/>
+<path d="M0 698H1600" stroke="#ff5d83" stroke-width="6" filter="url(#neon)"/>
+<g fill="#0c0e1b" stroke="#612946" stroke-width="6">
+ <path d="M65 740h64v18H65zm10 18h8v110h-8zm43 0h8v110h-8z"/>
+ <path d="M270 740h64v18h-64zm10 18h8v110h-8zm43 0h8v110h-8z"/>
+ <path d="M1280 740h64v18h-64zm10 18h8v110h-8zm43 0h8v110h-8z"/>
+</g>
+<path d="M0 864H1600" stroke="#a83b5e" stroke-width="12"/>
+</svg>
