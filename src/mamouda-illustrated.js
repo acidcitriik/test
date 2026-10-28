@@ -3,7 +3,7 @@
  *
  * The static illustration is the complete visual table. The actual Match XZ
  * simulation remains authoritative and unmodified; no 3D table mesh is drawn.
- * Puck/paddle visuals are projected by a planar homography into the drawing.
+ * Puck/paddle visuals are projected by a calibrated 3-row perspective warp into the drawing.
  * The lit neon is a registered transparent image laid over the OFF image.
  */
 export function createMamoudaIllustratedStage({canvas, match}) {
@@ -37,43 +37,23 @@ export function createMamoudaIllustratedStage({canvas, match}) {
   canvas.style.opacity='0';
   document.body.classList.add('illustrated-arena');
 
-  // Four matching surface corners in the original 1672×941 illustration.
-  // u=0/1 is left/right; v=0/1 is far/near. All four are within the rail.
+  // Illustration calibration: edge points at far/centre/near (source pixels).
+  // The drawing is artistically stylised, NOT an exact pinhole projection:
+  // a planar homography would put the centre line around y=489 instead of
+  // the painted centre line at y=543. A smooth quadratic matches all 3 rows.
+  // Only the *rendered* coordinates warp; the Match world and collisions do not.
   const corners=[
-    {u:0,v:0,x:648,y:400},
-    {u:1,v:0,x:1012,y:400},
-    {u:1,v:1,x:1470,y:797},
-    {u:0,v:1,x:202,y:797},
+    {x:648,y:400},{x:1012,y:400},
+    {x:1470,y:797},{x:202,y:797}
   ];
-  // Solve 8 independent equations of the projective transform, without
-  // adding dependencies. h22=1; partial pivoting guards poor conditioning.
-  function solveHomography(points) {
-    const a=points.map(({u,v,x,y},i)=>[
-      [u,v,1,0,0,0,-x*u,-x*v,x],
-      [0,0,0,u,v,1,-y*u,-y*v,y],
-    ]).flat();
-    for(let k=0;k<8;k++){
-      let pivot=k;
-      for(let j=k+1;j<8;j++)if(Math.abs(a[j][k])>Math.abs(a[pivot][k]))pivot=j;
-      [a[pivot],a[k]]=[a[k],a[pivot]];
-      if(Math.abs(a[k][k])<1e-10)throw Error('Mamouda calibration is degenerate');
-      const factor=a[k][k];
-      for(let j=k;j<9;j++)a[k][j]/=factor;
-      for(let i=0;i<8;i++){
-        if(i===k)continue;
-        const m=a[i][k];
-        for(let j=k;j<9;j++)a[i][j]-=m*a[k][j];
-      }
-    }
-    return a.map(row=>row[8]);
-  }
-  const [a,b,c,d,e,f,g,h]=solveHomography(corners);
-  const worldToImage=(x,z)=>{
-    const u=(x/match.cfg.width)+.5;
+  function worldToImage(x,z){
+    const u=x/match.cfg.width+.5;
     const v=.5-z/match.cfg.length;
-    const div=g*u+h*v+1;
-    return {x:(a*u+b*v+c)/div,y:(d*u+e*v+f)/div};
-  };
+    const y=400+175*v+222*v*v;
+    const left=648-286*v-160*v*v;
+    const right=1012+294*v+164*v*v;
+    return {x:left+(right-left)*u,y};
+  }
   const layout={scale:1,offsetX:0,offsetY:0,dpr:1,w:0,h:0};
   function resize(){
     const w=window.innerWidth,h=window.innerHeight;
