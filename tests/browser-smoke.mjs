@@ -31,6 +31,10 @@ try {
   await page.waitForFunction(()=>document.pointerLockElement?.id==='game');
   const locked=await page.evaluate(()=>document.pointerLockElement?.id);
   assert.equal(locked,'game','mouse must be captured for actual play');
+  const desktopCamera=await page.evaluate(()=>window.__gameDiagnostics.camera());
+  assert.ok(Math.abs(desktopCamera.y-7.2)<1e-8);
+  assert.ok(Math.abs(desktopCamera.z+10.9)<1e-8);
+
   // The contact HUD is frame-driven: wait for an actual frame instead of
   // assuming 40 ms is enough on a software-rendered GitHub runner.
   await page.mouse.down({button:'right'});
@@ -84,6 +88,12 @@ try {
   await mobile.waitForFunction(()=>getComputedStyle(document.querySelector('#overlay')).display==='none');
   assert.equal(await mobile.evaluate(()=>document.pointerLockElement),null);
   assert.equal(await mobile.locator('#mobileControls').evaluate(e=>getComputedStyle(e).display),'flex');
+  const mobileCamera=await mobile.evaluate(()=>window.__gameDiagnostics.camera());
+  assert.ok(Math.abs(mobileCamera.downwardAngleDegrees-desktopCamera.downwardAngleDegrees-20)<1e-6,
+    'touch camera must look 20 degrees more downward than desktop');
+  assert.ok(mobileCamera.y>desktopCamera.y&&mobileCamera.z>desktopCamera.z,
+    'touch camera should rise and move toward the table without changing the target');
+
   await mobile.locator('[data-touch-mode="grip"]').click();
   await mobile.waitForFunction(()=>document.querySelector('#contact')?.textContent==='ADHÉRENCE');
   // Real Chromium touch gestures: synthetic PointerEvents did not exercise
