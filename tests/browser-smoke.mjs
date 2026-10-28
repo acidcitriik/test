@@ -186,7 +186,7 @@ try {
   illustrated.on('response',response=>{
     if(response.status()>=400)illustratedFailures.push(response.url());
   });
-  await illustrated.goto('http://127.0.0.1:'+port+'/?stage=mamouda-final&calibrate=1',
+  await illustrated.goto('http://127.0.0.1:'+port+'/?stage=mamouda-final',
     {waitUntil:'networkidle'});
   await illustrated.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:15000});
   const finalInfo=await illustrated.evaluate(()=>({
@@ -195,8 +195,8 @@ try {
     layers:window.__stageDiagnostics.backgroundLayers(),
     images:document.querySelectorAll('[data-mamouda-illustrated="true"] img').length,
     canvasInvisible:getComputedStyle(document.querySelector('#game')).opacity==='0',
-    farLeft:window.__stageDiagnostics.project(-2.9,5),
-    nearRight:window.__stageDiagnostics.project(2.9,-5)
+    farLeft:window.__stageDiagnostics.projected(-2.9,5),
+    nearRight:window.__stageDiagnostics.projected(2.9,-5)
   }));
   assert.equal(finalInfo.name,'mamouda-final');
   assert.equal(finalInfo.ready,true);
