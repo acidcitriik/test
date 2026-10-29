@@ -210,7 +210,7 @@ document.addEventListener('mousemove',e=>{
   match.target.x=movement.x;match.target.z=movement.z;
 });
 arena.addEventListener('click',()=>{if(active&&!isTouch()&&document.pointerLockElement!==arena){arena.requestPointerLock?.().catch(()=>{});}});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena)pointerRequested=false;});
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena){pointerRequested=false;if(active&&!isTouch())showPause();}});
 document.addEventListener('mousedown',e=>{if(!active||!match||isTouch())return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
 document.addEventListener('mouseup',e=>{if(!match||isTouch())return;if(e.button===0)match.setButton('left',false);if(e.button===2)match.setButton('right',false);});
 document.addEventListener('contextmenu',e=>{if(active)e.preventDefault();});
