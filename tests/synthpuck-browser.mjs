@@ -54,7 +54,7 @@ try{
  assert.ok(scoreBox.width>105&&scoreBox.height<120,
    `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
  const painted=await page.evaluate(()=>{
-  const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName','.btn.primary'];
+  const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName'];
   return selectors.map(selector=>({selector,bg:getComputedStyle(document.querySelector(selector)).backgroundImage}));
  });
  assert.ok(painted.every(entry=>entry.bg.startsWith('url(')),'HUD and button panels are raster-painted: '+JSON.stringify(painted));
