@@ -24,6 +24,8 @@ jobs:
           node --check src/ai-profiles.js
           node --check src/campaign.js
           node --check src/synthpuck.js
+          node --check tests/synthpuck-browser.mjs
+          node --check tests/synthpuck.test.mjs
       - name: Run simulation tests
         run: node --test tests/*.test.mjs
       - name: Install headless Chromium driver
