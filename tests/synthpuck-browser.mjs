@@ -20,9 +20,17 @@ try{
  page.on('pageerror',e=>errors.push(e.message));
  page.on('response',r=>{if(r.status()>=400&&r.url().includes('127.0.0.1'))badAssets.push(r.url());});
  const base=`http://127.0.0.1:${server.address().port}/`;
+ const splash=await browser.newPage({viewport:{width:1280,height:720}});
+ await splash.goto(base,{waitUntil:'domcontentloaded'});
+ await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='splash');
+ assert.equal(await splash.locator('svg.logo').count(),1);
+ await splash.screenshot({path:'synthpuck-studio-preview.png'});
+ await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu',{timeout:7000});
+ await splash.close();
  await page.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu');
  assert.equal(await page.title(),'SYNTHPUCK — PiperadeGames');
+ await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
  assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
  assert.equal(await page.getByRole('button',{name:/EXIT/}).isDisabled(),true);
@@ -48,6 +56,7 @@ try{
  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  assert.equal(await page.locator('.roster-card').count(),7);
+ await page.screenshot({path:'synthpuck-character-select-preview.png'});
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
   await page.locator(`[data-character="${id}"]`).click();
   assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
