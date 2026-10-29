@@ -137,8 +137,9 @@ function drawBackdrop(){
 }
 function drawOpponent(){
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
-  // Physically behind the far rail: character silhouette is clipped at its y=400.
-  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+355*layout.scale);bg.clip();
+  // The tabletop begins at native Y=351. Clip exactly at its far edge:
+  // no character pixel or shadow can cover the table or its playing surface.
+  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+351*layout.scale);bg.clip();
   const height=260*layout.scale,width=image.width/image.height*height;
   const x=layout.x+NATIVE.w*layout.scale/2-width/2;
   const y=layout.y+135*layout.scale;
