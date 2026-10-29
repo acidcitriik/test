@@ -39,7 +39,8 @@ try{
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
- await page.keyboard.press('Escape');\n  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+ await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause');
  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
@@ -53,7 +54,8 @@ try{
   const snap=await page.evaluate(()=>__synthpuck.snapshot());
   assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
   assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
-  await page.keyboard.press('Escape');\n  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
   await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
   await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  }
