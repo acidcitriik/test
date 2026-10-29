@@ -137,9 +137,8 @@ function drawBackdrop(){
 }
 function drawOpponent(){
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
-  // The tabletop begins at native Y=351. Clip exactly at its far edge:
-  // no character pixel or shadow can cover the table or its playing surface.
-  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+351*layout.scale);bg.clip();
+  // The character sits behind the visible far rail (same fixed geometry as the puck).
+  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+385*layout.scale);bg.clip();
   const height=260*layout.scale,width=image.width/image.height*height;
   const x=layout.x+NATIVE.w*layout.scale/2-width/2;
   const y=layout.y+135*layout.scale;
@@ -147,32 +146,58 @@ function drawOpponent(){
   bg.drawImage(image,x,y,width,height);
   bg.restore();
 }
+// Common 1672 x 941 playing surface measured on the ORIGINAL training artwork.
+// Do not edit any image in assets/stages: calibrate only moving object projection.
+// Far rail Y≈385, centre line Y≈545, near rail Y≈770. Old 351..798 mapped
+// the moving collision field beyond both visible rails (the "too deep" table).
+export const TABLE_CALIBRATION=Object.freeze({
+ far:{y:390,left:680,right:992},
+ center:{y:544,left:490,right:1186},
+ near:{y:770,left:225,right:1450}
+});
 function project(x,z){
-  // Identical mapping for ALL eight pixel-aligned stages. The existing engine's
-  // camera-right is negative world X, as established by controls.js.
-  const u=.5-x/match.cfg.width;
-  const v=.5-z/match.cfg.length;
-  const iy=351+325*v+122*v*v;
-  const left=675-320*v-155*v*v,right=994+310*v+166*v*v;
-  return {x:layout.x+(left+(right-left)*u)*layout.scale,y:layout.y+iy*layout.scale};
+  // Same physics, camera-right = -world X; clamp world coordinates for graphics.
+  const u=clamp(.5-x/match.cfg.width,0,1);
+  const v=clamp(.5-z/match.cfg.length,0,1);
+  const yy=390+236*v+144*v*v;
+  const left=680-305*v-150*v*v;
+  const right=992+318*v+140*v*v;
+  return {x:layout.x+(left+(right-left)*u)*layout.scale,y:layout.y+yy*layout.scale};
 }
 function projectedRadius(x,z,r){
   const a=project(x-r,z),b=project(x+r,z),c=project(x,z-r),d=project(x,z+r);
   return {rx:Math.max(3,Math.abs(b.x-a.x)/2),ry:Math.max(2,Math.abs(c.y-d.y)/2)};
 }
-const atlasCrop={player:[6,8,232,137],ai:[258,8,232,137],puck:[10,164,90,60]};
+// Existing atlas is not damaged: verified alpha bounds are inset from all crop
+// edges. Size by OPAQUE silhouette width (not the padded crop rectangle).
+// This keeps the two paddles and puck faithful to their moving physics radii.
+const spriteArt=Object.freeze({
+ player:{crop:[6,8,232,137],inkWidth:214,anchor:.83},
+ ai:{crop:[258,8,232,137],inkWidth:214,anchor:.83},
+ puck:{crop:[10,164,90,60],inkWidth:82,anchor:.63}
+});
+function spriteGeometry(obj,type){
+ const p=project(obj.x,obj.z);
+ const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
+ const {rx}=projectedRadius(obj.x,obj.z,radius);
+ const sprite=spriteArt[type],width=(2*rx*0.98)*sprite.crop[2]/sprite.inkWidth;
+ const height=width*sprite.crop[3]/sprite.crop[2];
+ return {x:p.x-width/2,y:p.y-height*sprite.anchor,width,height};
+}
 function drawObject(obj,type){
+ const {x,y,width,height}=spriteGeometry(obj,type);
+ const {crop}=spriteArt[type],img=images.sprites;
+ if(img?.complete&&img.naturalWidth){
+  ctx.save();ctx.shadowColor='#030712c9';ctx.shadowBlur=8*layout.scale;
+  // Draw the entire source cell including transparent breathing space:
+  // no implicit clip and no stretched fractional source sub-rectangle.
+  ctx.drawImage(img,...crop,x,y,width,height);
+  ctx.restore();
+ }else{
   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg[type==='puck'?'puckRadius':'paddleRadius']);
-  const rect=atlasCrop[type],img=images.sprites;
-  const width=2.12*rx,height=width*rect[3]/rect[2];
-  if(img?.complete&&img.naturalWidth){
-    ctx.save();ctx.shadowColor='#030712c9';ctx.shadowBlur=10*layout.scale;
-    ctx.drawImage(img,...rect,p.x-width/2,p.y-height*.83,width,height);
-    ctx.restore();
-  }else{
-    ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
-    ctx.fillStyle=type==='player'?'#4ce3ff':type==='ai'?'#ff4865':'#f0faff';ctx.fill();
-  }
+  ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
+  ctx.fillStyle=type==='player'?'#4ce3ff':type==='ai'?'#ff4865':'#f0faff';ctx.fill();
+ }
 }
 function drawActors(){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)return;
   // The far opponent's paddle is behind the centre puck, which is behind the player's paddle.
@@ -243,7 +268,9 @@ window.__synthpuck=Object.freeze({
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),
   project:(x,z)=>match?project(x,z):null,
-  projectedRadius:(x,z,r)=>match?projectedRadius(x,z,r):null
+  projectedRadius:(x,z,r)=>match?projectedRadius(x,z,r):null,
+  spriteGeometry:(type,x,z)=>match?spriteGeometry({x,z},type):null,
+  calibration:TABLE_CALIBRATION
 });
 resize();requestAnimationFrame(frame);
 const params=new URLSearchParams(location.search);
