@@ -53,6 +53,9 @@ try{
  const scoreBox=await page.locator('#score').boundingBox();
  assert.ok(scoreBox.width>105&&scoreBox.height<120,
    `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
+ const scoreFlow=await page.locator('#score').evaluate(el=>({display:getComputedStyle(el).display,content:el.innerText,spanTop:el.querySelector('span').getBoundingClientRect().top,parentTop:el.getBoundingClientRect().top,parentHeight:el.getBoundingClientRect().height}));
+ assert.equal(scoreFlow.display,'flex','Scoreboard must not inherit grid layout');
+ assert.ok(scoreFlow.spanTop>=scoreFlow.parentTop&&scoreFlow.spanTop<scoreFlow.parentTop+scoreFlow.parentHeight,'Colon stays inside HUD score plate');
  const painted=await page.evaluate(()=>{
   const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName'];
   return selectors.map(selector=>({selector,bg:getComputedStyle(document.querySelector(selector)).backgroundImage}));
@@ -89,6 +92,7 @@ try{
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  assert.equal(await page.locator('.roster-card').count(),7);
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
+ assert.equal(await page.locator('svg').count(),0,'No SVG in character selection');
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
   await page.locator(`[data-character="${id}"]`).click();
   assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
@@ -108,6 +112,7 @@ try{
  await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.screenshot({path:'synthpuck-training-preview.png'});
+ assert.equal(await page.locator('svg').count(),0,'No SVG in the training arena');
  // Verify that the complete table is visible on phones and wide screens;
  // the same world-to-stage projection must be used for all eight arenas.
  for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1672,height:941}]){
@@ -116,6 +121,7 @@ try{
    const size=window.__synthpuck.snapshot().viewport;
    return size.width===v.width&&size.height===v.height;
   },viewport);
+  if(viewport.width===844)await page.screenshot({path:'synthpuck-landscape-preview.png'});
   const points=await page.evaluate(()=>[
    __synthpuck.project(-2.9,-5),__synthpuck.project(2.9,-5),
    __synthpuck.project(-2.9,5),__synthpuck.project(2.9,5)
