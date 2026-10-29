@@ -20,6 +20,10 @@ jobs:
           node --check src/mamouda-painted-stage.js
           node --check src/mamouda-illustrated.js
           node --check src/controls.js
+          node --check src/roster.js
+          node --check src/ai-profiles.js
+          node --check src/campaign.js
+          node --check src/synthpuck.js
       - name: Run simulation tests
         run: node --test tests/*.test.mjs
       - name: Install headless Chromium driver
@@ -28,6 +32,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Smoke test 3D game startup
         run: node tests/browser-smoke.mjs
+      - name: Smoke test full Synthpuck Arcade and Training
+        run: node tests/synthpuck-browser.mjs
       - name: Upload Mamouda 2.5D screenshot
         if: always()
         uses: actions/upload-artifact@v4
@@ -37,4 +43,6 @@ jobs:
             mamouda-preview.png
             mamouda-painted-preview.png
             mamouda-final-preview.png
+            synthpuck-arcade-preview.png
+            synthpuck-training-preview.png
           if-no-files-found: ignore
