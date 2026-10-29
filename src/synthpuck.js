@@ -149,8 +149,8 @@ function project(x,z){
   // camera-right is negative world X, as established by controls.js.
   const u=.5-x/match.cfg.width;
   const v=.5-z/match.cfg.length;
-  const iy=400+175*v+222*v*v;
-  const left=648-286*v-160*v*v,right=1012+294*v+164*v*v;
+  const iy=351+325*v+122*v*v;
+  const left=675-320*v-155*v*v,right=994+310*v+166*v*v;
   return {x:layout.x+(left+(right-left)*u)*layout.scale,y:layout.y+iy*layout.scale};
 }
 function projectedRadius(x,z,r){
