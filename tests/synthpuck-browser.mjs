@@ -45,7 +45,7 @@ try{
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
  const scoreBox=await page.locator('#score').boundingBox();
  assert.ok(scoreBox.width>150&&scoreBox.height<120,
-   'HUD scoreboard must remain on one horizontal row');
+   `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');
@@ -54,6 +54,7 @@ try{
   await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause');
  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
+ assert.equal(await page.locator('#fighterName').isHidden(),true,'No character name over menus');
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  assert.equal(await page.locator('.roster-card').count(),7);
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
@@ -75,6 +76,24 @@ try{
  await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.screenshot({path:'synthpuck-training-preview.png'});
+ // Verify that the complete table is visible on phones and wide screens;
+ // the same world-to-stage projection must be used for all eight arenas.
+ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1672,height:941}]){
+  await page.setViewportSize(viewport);
+  const points=await page.evaluate(()=>[
+   __synthpuck.project(-2.9,-5),__synthpuck.project(2.9,-5),
+   __synthpuck.project(-2.9,5),__synthpuck.project(2.9,5)
+  ]);
+  assert.ok(points.every(p=>p.x>=0&&p.x<=viewport.width&&p.y>=0&&p.y<=viewport.height),
+   `Table must be fully framed at ${viewport.width}x${viewport.height}: ${JSON.stringify(points)}`);
+ }
+ const assets=await page.evaluate(async()=>{
+  const ids=['mute','chonk','simous','mamouda','diamond','stal','2502','training'];
+  const load=src=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve([image.naturalWidth,image.naturalHeight]);image.onerror=reject;image.src=src;});
+  return await Promise.all(ids.map(async id=>({id,dim:await load('./assets/stages/'+id+'.webp')})));
+ });
+ assert.ok(assets.every(a=>a.dim[0]===1672&&a.dim[1]===941),
+  'Eight backgrounds share one calibrated 1672×941 geometry: '+JSON.stringify(assets));
  assert.deepEqual(errors,[],'No JS exceptions');
  assert.deepEqual(badAssets,[],'All assets must load');
  await page.close();

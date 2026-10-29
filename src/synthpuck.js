@@ -24,7 +24,7 @@ const statsHtml=c=>`<div class="stats" style="--accent:${c.accent}">${STAT_NAMES
 const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp" alt="Portrait de ${c.name}"/>`;
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
 const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
-function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);}
+function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=name!=='playing';}
 function showSplash(){setScreen('splash');panel.innerHTML=`<div class="studio">${logo}<h2>PIPERADE<span>GAMES</span></h2><p class="eyebrow">PRESENTS</p></div>`;}
 function showMenu(){
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
@@ -118,7 +118,9 @@ for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','tr
 images.sprites=loadImage('./assets/mamouda/sprites.webp');
 function resize(){
   const cssW=innerWidth,cssH=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
-  layout={cssW,cssH,dpr,scale:Math.max(cssW/NATIVE.w,cssH/NATIVE.h),x:0,y:0};
+  // Contain the entire calibrated table and rear-rail silhouette on every aspect ratio.
+  // Cover-cropping hides the goals on tall phones and makes the duel unplayable.
+  layout={cssW,cssH,dpr,scale:Math.min(cssW/NATIVE.w,cssH/NATIVE.h),x:0,y:0};
   layout.x=(cssW-NATIVE.w*layout.scale)/2;layout.y=(cssH-NATIVE.h*layout.scale)/2;
   for(const c of [arena,backdrop]){c.width=Math.round(cssW*dpr);c.height=Math.round(cssH*dpr);}
   ctx.setTransform(dpr,0,0,dpr,0,0);
