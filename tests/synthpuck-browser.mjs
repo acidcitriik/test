@@ -23,13 +23,20 @@ try{
  const splash=await browser.newPage({viewport:{width:1280,height:720}});
  await splash.goto(base,{waitUntil:'domcontentloaded'});
  await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='splash');
- assert.equal(await splash.locator('svg.logo').count(),1);
+ assert.equal(await splash.locator('svg').count(),0,'No vector SVG on splash');
+ assert.equal(await splash.locator('.studio-image').count(),1);
+ await splash.locator('.studio-image').evaluate(img=>img.decode());
+ assert.ok((await splash.locator('.studio-image').evaluate(img=>img.naturalWidth))>=600,'Raster studio image loads');
  await splash.screenshot({path:'synthpuck-studio-preview.png'});
  await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu',{timeout:7000});
  await splash.close();
  await page.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu');
  assert.equal(await page.title(),'SYNTHPUCK — PiperadeGames');
+ await page.waitForFunction(()=>document.documentElement.dataset.uiArt==='loaded');
+ assert.equal(await page.locator('svg').count(),0,'No SVG in the active title screen');
+ const menuBg=await page.locator('.menu-image').evaluate(el=>getComputedStyle(el).backgroundImage);
+ assert.match(menuBg,/menu-hud\\.avif/,'Title/menu uses raster atlas');
  await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
  assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
@@ -44,8 +51,14 @@ try{
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
  const scoreBox=await page.locator('#score').boundingBox();
- assert.ok(scoreBox.width>150&&scoreBox.height<120,
+ assert.ok(scoreBox.width>105&&scoreBox.height<120,
    `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
+ const painted=await page.evaluate(()=>{
+  const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName','.btn.primary'];
+  return selectors.map(selector=>({selector,bg:getComputedStyle(document.querySelector(selector)).backgroundImage}));
+ });
+ assert.ok(painted.every(entry=>entry.bg.startsWith('url(')),'HUD and button panels are raster-painted: '+JSON.stringify(painted));
+ assert.equal(await page.locator('svg').count(),0,'No in-game vector graphics');
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');

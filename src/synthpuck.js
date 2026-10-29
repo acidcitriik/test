@@ -18,18 +18,17 @@ let layout={scale:1,x:0,y:0,cssW:1,cssH:1,dpr:1};
 let pausedReason='',showFarOpponent=false;
 const isTouch=()=>navigator.maxTouchPoints>0 || matchMedia('(pointer:coarse)').matches;
 
-const logo=`<svg class="logo" viewBox="0 0 120 150" role="img" aria-label="Piment rouge de PiperadeGames" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="pepper" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ff8c45"/><stop offset=".45" stop-color="#f12d4a"/><stop offset="1" stop-color="#9f123c"/></linearGradient></defs><path d="M68 36C78 23 76 12 72 6C68 17 57 23 49 33" fill="none" stroke="#6ed083" stroke-width="9" stroke-linecap="round"/><path d="M61 36C89 20 111 42 103 72C94 108 68 127 32 135C15 138 5 129 16 116C42 95 47 72 45 51C44 43 50 38 61 36Z" fill="url(#pepper)" stroke="#ff9c7a" stroke-width="3"/><path d="M57 45C50 60 58 85 42 105" fill="none" stroke="#ffb2a1" stroke-width="6" stroke-linecap="round" opacity=".7"/><path d="M49 37C57 28 69 29 79 37" fill="none" stroke="#89e177" stroke-width="7" stroke-linecap="round"/></svg>`;
 const statBar=(value,accent)=>`<div class="meter" style="--accent:${accent}">${Array.from({length:5},(_,i)=>`<i class="${i<value?'on':''}"></i>`).join('')}</div>`;
 const statsHtml=c=>`<div class="stats" style="--accent:${c.accent}">${STAT_NAMES.map((title,i)=>`<div class="stat-line"><label>${title}</label>${statBar(c.stats[i],c.accent)}</div>`).join('')}</div>`;
 const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp" alt="Portrait de ${c.name}"/>`;
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
 const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=name!=='playing';}
-function showSplash(){setScreen('splash');panel.innerHTML=`<div class="studio">${logo}<h2>PIPERADE<span>GAMES</span></h2><p class="eyebrow">PRESENTS</p></div>`;}
+function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
-  panel.innerHTML=`<div class="title-screen"><p class="eyebrow">PIPERADEGAMES PRÉSENTE</p><h1>SYNTHPUCK</h1><p class="subtitle">STRIKE. SPIN. SURVIVE.</p><nav class="menu" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}<button class="btn" disabled aria-disabled="true" title="Bientôt disponible">OPTIONS <span aria-hidden="true">·</span> BIENTÔT</button><button class="btn" disabled aria-disabled="true" title="Non disponible dans le navigateur">EXIT <span aria-hidden="true">·</span> INACTIF</button></nav><p class="title-foot">7 RIVAUX · 8 ARÈNES · UN SEUL VAINQUEUR</p></div>`;
+  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}<button class="btn" disabled aria-disabled="true">OPTIONS</button><button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
@@ -116,6 +115,36 @@ function loadImage(src){const img=new Image();img.decoding='async';img.addEventL
 for(const p of ROSTER)images.characters[p.id]=loadImage(`./assets/characters/${p.id}.webp`);
 for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','training']) images.stages[name]=loadImage(`./assets/stages/${name}.webp`);
 images.sprites=loadImage('./assets/mamouda/sprites.webp');
+// Runtime raster cropping of the approved painted atlas. Never draw vector panels.
+// Frame 1 (0..225): title/menu, frame 2 (225..450): illustrated HUD.
+// We sample unlabelled painted plates for live score / names / stats.
+const uiAtlas=loadImage('./assets/ui/menu-hud.avif');
+let uiArtReady=false;
+function installPaintedUi(){
+ if(!uiAtlas.complete||!uiAtlas.naturalWidth)return;
+ const scale=uiAtlas.naturalWidth/NATIVE.w,offset=uiAtlas.naturalHeight/2;
+ function cropRgba([x,y,w,h]){
+  const sx=Math.round(x*scale),sy=Math.round(y*scale+offset);
+  const sw=Math.round(w*scale),sh=Math.round(h*scale);
+  const canvas=document.createElement('canvas');canvas.width=sw;canvas.height=sh;
+  canvas.getContext('2d').drawImage(uiAtlas,sx,sy,sw,sh,0,0,sw,sh);
+  return `url("${canvas.toDataURL('image/png')}")`;
+ }
+ const art={
+  '--plate-red':[126,711,654,180],
+  '--plate-blue':[858,711,660,180],
+  '--plate-pause':[1275,270,295,280],
+  '--touch-normal':[22,545,392,160],
+  '--touch-rigid':[419,545,395,160],
+  '--touch-soft':[825,545,394,160],
+  '--touch-spin':[1228,545,399,160]
+ };
+ for(const [name,rect] of Object.entries(art))document.documentElement.style.setProperty(name,cropRgba(rect));
+ document.documentElement.dataset.uiArt='loaded';uiArtReady=true;
+}
+uiAtlas.addEventListener('load',installPaintedUi);
+if(uiAtlas.complete&&uiAtlas.naturalWidth)installPaintedUi();
+
 function resize(){
   const cssW=innerWidth,cssH=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
   // Contain the entire calibrated table and rear-rail silhouette on every aspect ratio.
@@ -264,6 +293,7 @@ window.__synthpuck=Object.freeze({
     score:match?[...match.scores]:null,state:match?.state??null,
     ready:Boolean(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth),
     viewport:{width:layout.cssW,height:layout.cssH},
+    uiArtReady,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),
