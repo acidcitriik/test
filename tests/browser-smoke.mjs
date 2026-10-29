@@ -25,7 +25,7 @@ try {
   const page=await browser.newPage({viewport:{width:1366,height:768}});
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('http://127.0.0.1:'+port+'/prototype.html,{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:'+port+'/prototype.html',{waitUntil:'networkidle'});
   await page.locator('#game').waitFor();
   await page.getByRole('button',{name:'JOUER'}).click();
   await page.waitForFunction(()=>document.pointerLockElement?.id==='game');
@@ -83,7 +83,7 @@ try {
   });
   const mobileErrors=[];
   mobile.on('pageerror',e=>mobileErrors.push(e.message));
-  await mobile.goto('http://127.0.0.1:'+port+'/prototype.html,{waitUntil:'networkidle'});
+  await mobile.goto('http://127.0.0.1:'+port+'/prototype.html',{waitUntil:'networkidle'});
   await mobile.locator('#play').click();
   await mobile.waitForFunction(()=>getComputedStyle(document.querySelector('#overlay')).display==='none');
   assert.equal(await mobile.evaluate(()=>document.pointerLockElement),null);
