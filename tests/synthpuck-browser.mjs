@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import http from 'node:http';
+import {readFile} from 'node:fs/promises';
+import {resolve,extname,sep} from 'node:path';
+import {chromium} from 'playwright';
+const root=resolve(import.meta.dirname,'..');
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webp':'image/webp','.svg':'image/svg+xml'};
+const server=http.createServer(async(req,res)=>{
+ try{const p=new URL(req.url,'http://localhost').pathname;
+  const f=resolve(root,'.'+(p==='/'?'/index.html':p));if(!f.startsWith(root+sep))throw Error('Forbidden');
+  const bytes=await readFile(f);res.writeHead(200,{'Content-Type':types[extname(f)]||'application/octet-stream'});res.end(bytes);
+ }catch(err){res.writeHead(404);res.end(String(err.message));}
+});
+let browser;
+try{
+ await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+ browser=await chromium.launch({headless:true,args:['--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
+ const page=await browser.newPage({viewport:{width:1672,height:941}});
+ const errors=[],badAssets=[];
+ page.on('pageerror',e=>errors.push(e.message));
+ page.on('response',r=>{if(r.status()>=400&&r.url().includes('127.0.0.1'))badAssets.push(r.url());});
+ const base=`http://127.0.0.1:${server.address().port}/`;
+ await page.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
+ await page.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu');
+ assert.equal(await page.title(),'SYNTHPUCK — PiperadeGames');
+ assert.equal(await page.locator('.menu button').count(),4);
+ assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:/EXIT/}).isDisabled(),true);
+ await page.getByRole('button',{name:'ARCADE'}).click();
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).opponent,'mute');
+ assert.equal(await page.locator('.stat-line').count(),4);
+ await page.getByRole('button',{name:'LANCER LE DUEL'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().ready);
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing');
+ const first=await page.evaluate(()=>__synthpuck.snapshot());
+ assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
+ assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
+ const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
+ assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
+ assert.ok(geometry.radius.rx>20,'paddles must be visible');
+ await page.screenshot({path:'synthpuck-arcade-preview.png'});
+ await page.locator('#pauseButton').click();
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause');
+ await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
+ await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
+ assert.equal(await page.locator('.roster-card').count(),7);
+ for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
+  await page.locator(`[data-character="${id}"]`).click();
+  assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
+  assert.equal(await page.locator('.stat-line').count(),4);
+  await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
+  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
+  const snap=await page.evaluate(()=>__synthpuck.snapshot());
+  assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
+  assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
+  await page.locator('#pauseButton').click();
+  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
+  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
+ }
+ await page.locator('[data-character="2502"]').click();
+ await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().ready);
+ await page.screenshot({path:'synthpuck-training-preview.png'});
+ assert.deepEqual(errors,[],'No JS exceptions');
+ assert.deepEqual(badAssets,[],'All assets must load');
+ await page.close();
+ console.log('SYNTHPUCK browser verified: logo/title/menu, 7 portraits/stats/AI, arcade, training, physics projection, pause, assets.');
+} finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
