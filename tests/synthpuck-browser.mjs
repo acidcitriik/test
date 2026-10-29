@@ -49,6 +49,24 @@ try{
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');
+ const calibrated=await page.evaluate(()=>{
+  const api=__synthpuck,table=api.calibration;
+  const xy=(x,z)=>api.project(x,z);
+  return {table,far:[xy(2.9,5),xy(-2.9,5)],middle:xy(0,0),near:[xy(2.9,-5),xy(-2.9,-5)],
+   player:api.spriteGeometry('player',0,-3.6),
+   ai:api.spriteGeometry('ai',0,3.6),
+   puck:api.spriteGeometry('puck',0,0)};
+ });
+ assert.deepEqual(calibrated.table.near,{y:770,left:225,right:1450});
+ assert.deepEqual(calibrated.table.far,{y:390,left:680,right:992});
+ assert.ok(Math.abs(calibrated.middle.y-544)<1,'Puck center follows painted midline');
+ assert.ok(calibrated.far.every(p=>p.y===390),'Invisible back rail stays on painted far edge');
+ assert.ok(calibrated.near.every(p=>p.y===770),'Invisible near rail stays on painted near edge');
+ for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
+  assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
+  assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
+ }
+
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
  await page.keyboard.press('Escape');
   await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
@@ -130,14 +148,12 @@ try{
   });
   return {rows,sprite:{w:sprite.width,h:sprite.height,spriteEdges}};
  });
- console.log('ART_CALIBRATION '+JSON.stringify(artScan));
- const thumbnail=await page.evaluate(async()=>{
-  const img=new Image();img.src='./assets/stages/training.webp';await img.decode();
-  const c=document.createElement('canvas');c.width=672;c.height=378;
-  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
-  return c.toDataURL('image/webp',0.55).split(',')[1];
- });
- console.log('STAGE_THUMBNAIL '+thumbnail);
+ assert.equal(artScan.sprite.w,512);
+ assert.equal(artScan.sprite.h,350);
+ for(const obj of artScan.sprite.spriteEdges){
+  assert.deepEqual(obj.edge,[0,0,0,0],'No atlas sprite touches its crop edges');
+ }
+
  assert.deepEqual(errors,[],'No JS exceptions');
  assert.deepEqual(badAssets,[],'All assets must load');
  await page.close();
