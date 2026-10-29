@@ -49,6 +49,24 @@ try{
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');
+ const calibrated=await page.evaluate(()=>{
+  const api=__synthpuck,table=api.calibration;
+  const xy=(x,z)=>api.project(x,z);
+  return {table,far:[xy(2.9,5),xy(-2.9,5)],middle:xy(0,0),near:[xy(2.9,-5),xy(-2.9,-5)],
+   player:api.spriteGeometry('player',0,-3.6),
+   ai:api.spriteGeometry('ai',0,3.6),
+   puck:api.spriteGeometry('puck',0,0)};
+ });
+ assert.deepEqual(calibrated.table.near,{y:770,left:225,right:1450});
+ assert.deepEqual(calibrated.table.far,{y:390,left:680,right:992});
+ assert.ok(Math.abs(calibrated.middle.y-544)<1,'Puck center follows painted midline');
+ assert.ok(calibrated.far.every(p=>p.y===390),'Invisible back rail stays on painted far edge');
+ assert.ok(calibrated.near.every(p=>p.y===770),'Invisible near rail stays on painted near edge');
+ for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
+  assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
+  assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
+ }
+
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
  await page.keyboard.press('Escape');
   await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
@@ -99,6 +117,43 @@ try{
  });
  assert.ok(assets.every(a=>a.dim[0]===1672&&a.dim[1]===941),
   'Eight backgrounds share one calibrated 1672×941 geometry: '+JSON.stringify(assets));
+ const artScan=await page.evaluate(async()=>{
+  const load=src=>new Promise((done,fail)=>{const i=new Image();i.onload=()=>done(i);i.onerror=fail;i.src=src;});
+  const stage=await load('./assets/stages/training.webp');
+  const canvas=document.createElement('canvas');canvas.width=stage.width;canvas.height=stage.height;
+  const c=canvas.getContext('2d',{willReadFrequently:true});c.drawImage(stage,0,0);
+  const px=c.getImageData(0,0,canvas.width,canvas.height).data;
+  const rows=[300,350,375,400,425,450,500,550,600,650,700,750,775,800].map(y=>{
+   const found=[];let run=-1;
+   for(let x=160;x<1512;x++){
+    const k=(y*canvas.width+x)*4;const r=px[k],g=px[k+1],b=px[k+2];
+    const on=g>130&&b>150&&g>r*1.25&&b>r*1.35;
+    if(on&&run<0)run=x;
+    if((!on||x===1511)&&run>=0){if(x-run>3)found.push([run,x-1]);run=-1;}
+   }
+   return {y,segments:found};
+  });
+  const sprite=await load('./assets/mamouda/sprites.webp');
+  canvas.width=sprite.width;canvas.height=sprite.height;c.drawImage(sprite,0,0);
+  const s=c.getImageData(0,0,canvas.width,canvas.height).data;
+  const crop=[[6,8,232,137],[258,8,232,137],[10,164,90,60]];
+  const spriteEdges=crop.map(([x,y,w,h])=>{
+   let edge=[0,0,0,0],minX=w,minY=h,maxX=-1,maxY=-1;
+   for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+    if(s[((y+yy)*canvas.width+x+xx)*4+3]<64)continue;
+    minX=Math.min(minX,xx);minY=Math.min(minY,yy);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,yy);
+    if(xx===0)edge[0]++;if(xx===w-1)edge[1]++;if(yy===0)edge[2]++;if(yy===h-1)edge[3]++;
+   }
+   return {bounds:[minX,minY,maxX,maxY],edge};
+  });
+  return {rows,sprite:{w:sprite.width,h:sprite.height,spriteEdges}};
+ });
+ assert.equal(artScan.sprite.w,512);
+ assert.equal(artScan.sprite.h,350);
+ for(const obj of artScan.sprite.spriteEdges){
+  assert.deepEqual(obj.edge,[0,0,0,0],'No atlas sprite touches its crop edges');
+ }
+
  assert.deepEqual(errors,[],'No JS exceptions');
  assert.deepEqual(badAssets,[],'All assets must load');
  await page.close();
