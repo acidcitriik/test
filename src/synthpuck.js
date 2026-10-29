@@ -237,6 +237,7 @@ window.__synthpuck=Object.freeze({
   snapshot:()=>({screen,mode,level,opponent:opponent.id,stage:currentStage,
     score:match?[...match.scores]:null,state:match?.state??null,
     ready:Boolean(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth),
+    viewport:{width:layout.cssW,height:layout.cssH},
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),

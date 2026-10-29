@@ -81,6 +81,10 @@ try{
  // the same world-to-stage projection must be used for all eight arenas.
  for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1672,height:941}]){
   await page.setViewportSize(viewport);
+  await page.waitForFunction(v=>{
+   const size=window.__synthpuck.snapshot().viewport;
+   return size.width===v.width&&size.height===v.height;
+  },viewport);
   const points=await page.evaluate(()=>[
    __synthpuck.project(-2.9,-5),__synthpuck.project(2.9,-5),
    __synthpuck.project(-2.9,5),__synthpuck.project(2.9,5)
