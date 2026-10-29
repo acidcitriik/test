@@ -99,6 +99,38 @@ try{
  });
  assert.ok(assets.every(a=>a.dim[0]===1672&&a.dim[1]===941),
   'Eight backgrounds share one calibrated 1672×941 geometry: '+JSON.stringify(assets));
+ const artScan=await page.evaluate(async()=>{
+  const load=src=>new Promise((done,fail)=>{const i=new Image();i.onload=()=>done(i);i.onerror=fail;i.src=src;});
+  const stage=await load('./assets/stages/training.webp');
+  const canvas=document.createElement('canvas');canvas.width=stage.width;canvas.height=stage.height;
+  const c=canvas.getContext('2d',{willReadFrequently:true});c.drawImage(stage,0,0);
+  const px=c.getImageData(0,0,canvas.width,canvas.height).data;
+  const rows=[300,350,375,400,425,450,500,550,600,650,700,750,775,800].map(y=>{
+   const found=[];let run=-1;
+   for(let x=160;x<1512;x++){
+    const k=(y*canvas.width+x)*4;const r=px[k],g=px[k+1],b=px[k+2];
+    const on=g>130&&b>150&&g>r*1.25&&b>r*1.35;
+    if(on&&run<0)run=x;
+    if((!on||x===1511)&&run>=0){if(x-run>3)found.push([run,x-1]);run=-1;}
+   }
+   return {y,segments:found};
+  });
+  const sprite=await load('./assets/mamouda/sprites.webp');
+  canvas.width=sprite.width;canvas.height=sprite.height;c.drawImage(sprite,0,0);
+  const s=c.getImageData(0,0,canvas.width,canvas.height).data;
+  const crop=[[6,8,232,137],[258,8,232,137],[10,164,90,60]];
+  const spriteEdges=crop.map(([x,y,w,h])=>{
+   let edge=[0,0,0,0],minX=w,minY=h,maxX=-1,maxY=-1;
+   for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
+    if(s[((y+yy)*canvas.width+x+xx)*4+3]<64)continue;
+    minX=Math.min(minX,xx);minY=Math.min(minY,yy);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,yy);
+    if(xx===0)edge[0]++;if(xx===w-1)edge[1]++;if(yy===0)edge[2]++;if(yy===h-1)edge[3]++;
+   }
+   return {bounds:[minX,minY,maxX,maxY],edge};
+  });
+  return {rows,sprite:{w:sprite.width,h:sprite.height,spriteEdges}};
+ });
+ console.log('ART_CALIBRATION '+JSON.stringify(artScan));
  assert.deepEqual(errors,[],'No JS exceptions');
  assert.deepEqual(badAssets,[],'All assets must load');
  await page.close();
