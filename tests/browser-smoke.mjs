@@ -6,7 +6,7 @@ import { resolve, extname, sep } from 'node:path';
 import { chromium } from 'playwright';
 
 const root = resolve(import.meta.dirname, '..');
-const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json' };
+const contentTypes = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json', '.svg':'image/svg+xml; charset=utf-8', '.webp':'image/webp' };
 const server = http.createServer(async(req,res)=>{
   try {
     const pathname=new URL(req.url,'http://localhost').pathname;
@@ -25,7 +25,7 @@ try {
   const page=await browser.newPage({viewport:{width:1366,height:768}});
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:'+port+'/prototype.html',{waitUntil:'networkidle'});
   await page.locator('#game').waitFor();
   await page.getByRole('button',{name:'JOUER'}).click();
   await page.waitForFunction(()=>document.pointerLockElement?.id==='game');
@@ -83,7 +83,7 @@ try {
   });
   const mobileErrors=[];
   mobile.on('pageerror',e=>mobileErrors.push(e.message));
-  await mobile.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
+  await mobile.goto('http://127.0.0.1:'+port+'/prototype.html',{waitUntil:'networkidle'});
   await mobile.locator('#play').click();
   await mobile.waitForFunction(()=>getComputedStyle(document.querySelector('#overlay')).display==='none');
   assert.equal(await mobile.evaluate(()=>document.pointerLockElement),null);
@@ -137,7 +137,108 @@ try {
     'rotation must preserve the raised camera angle');
   assert.deepEqual(mobileErrors,[]);
   await mobile.close();
-  console.log('Browser smoke passed:',JSON.stringify(state));
+  // Opt-in 2.5D stage must load both layers and preserve basic playability.
+  const stage=await browser.newPage({viewport:{width:1366,height:768}});
+  const stageErrors=[], failedResources=[];
+  stage.on('pageerror',e=>stageErrors.push(e.message));
+  stage.on('response',r=>{if(r.status()>=400)failedResources.push(r.url());});
+  await stage.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda',{waitUntil:'networkidle'});
+  await stage.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:30000});
+  const stageInfo=await stage.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    ready:window.__stageDiagnostics.ready()
+  }));
+  assert.deepEqual(stageInfo,{name:'mamouda',layers:2,ready:true},
+    'Mamouda must have two loaded visual background layers');
+  assert.deepEqual(failedResources,[], 'Mamouda assets must be reachable');
+  await stage.locator('#play').click();
+  await stage.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  await stage.screenshot({path:'mamouda-preview.png'});
+  assert.deepEqual(stageErrors,[],'Mamouda stage must not produce JS errors');
+  await stage.close();
+  // Illustrated variant: actual embedded painting, no duplicate painted table.
+  const painted=await browser.newPage({viewport:{width:1366,height:768}});
+  const paintedErrors=[],paintedFailed=[];
+  painted.on('pageerror',error=>paintedErrors.push(error.message));
+  painted.on('response',response=>{if(response.status()>=400)paintedFailed.push(response.url());});
+  await painted.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda-painted',{waitUntil:'networkidle'});
+  await painted.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:12000});
+  const paintedInfo=await painted.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    ready:window.__stageDiagnostics.ready()
+  }));
+  assert.deepEqual(paintedInfo,{name:'mamouda-painted',layers:1,ready:true},
+    'Illustrated Mamouda must load the raster painting');
+  assert.deepEqual(paintedFailed,[],'painted assets must load without HTTP errors');
+  await painted.locator('#play').click();
+  await painted.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  await painted.screenshot({path:'mamouda-painted-preview.png'});
+  assert.deepEqual(paintedErrors,[],'illustrated scene must not throw JS errors');
+  await painted.close();
+  // Final approved image: the 3D table is NOT painted on the screen.
+  // Its authoritative XZ physics remains active; mobile props are
+  // projected onto the illustrated plane.
+  const illustrated=await browser.newPage({viewport:{width:1366,height:768}});
+  const illustratedErrors=[],illustratedFailures=[];
+  illustrated.on('pageerror',error=>illustratedErrors.push(error.message));
+  illustrated.on('response',response=>{
+    if(response.status()>=400)illustratedFailures.push(response.url());
+  });
+  await illustrated.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda-final',
+    {waitUntil:'networkidle'});
+  await illustrated.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:15000});
+  const finalInfo=await illustrated.evaluate(()=>({
+    name:window.__stageDiagnostics.name,
+    ready:window.__stageDiagnostics.ready(),
+    layers:window.__stageDiagnostics.backgroundLayers(),
+    images:document.querySelectorAll('[data-mamouda-illustrated="true"] img').length,
+    canvasInvisible:getComputedStyle(document.querySelector('#game')).opacity==='0',
+    farLeft:window.__stageDiagnostics.projected(2.9,5),
+    nearRight:window.__stageDiagnostics.projected(-2.9,-5),
+    screenLeft:window.__stageDiagnostics.projected(1,0),
+    screenRight:window.__stageDiagnostics.projected(-1,0),
+    paddleRadius:window.__stageDiagnostics.projectedRadius(0,-3,.37),
+    puckRadius:window.__stageDiagnostics.projectedRadius(0,0,.17)
+  }));
+  assert.equal(finalInfo.name,'mamouda-final');
+  assert.equal(finalInfo.ready,true);
+  assert.equal(finalInfo.layers,2);
+  assert.equal(finalInfo.canvasInvisible,true);
+  assert.ok(finalInfo.paddleRadius.rx>20 && finalInfo.puckRadius.rx>8, 'comic sprites must remain visibly sized after left-right fix');
+  assert.ok(finalInfo.screenRight.x>finalInfo.screenLeft.x, 'negative world X must be screen-right');
+  assert.ok(finalInfo.farLeft.x<finalInfo.nearRight.x &&
+    finalInfo.farLeft.y<finalInfo.nearRight.y,
+    'table projection must respect image perspective');
+  assert.deepEqual(illustratedFailures,[],'illustrated assets must be reachable');
+  await illustrated.locator('#play').click();
+  await illustrated.waitForFunction(()=>document.pointerLockElement?.id==='game');
+  const before=await illustrated.evaluate(()=>window.__gameDiagnostics.target());
+  await illustrated.evaluate(()=>{
+    const event=new MouseEvent('mousemove',{bubbles:true});
+    Object.defineProperty(event,'movementX',{value:75});
+    Object.defineProperty(event,'movementY',{value:-30});
+    document.dispatchEvent(event);
+  });
+  await illustrated.waitForFunction(initial=>{
+    const t=window.__gameDiagnostics.target();
+    return Math.abs(t.x-initial.x)>.02||Math.abs(t.z-initial.z)>.02;
+  },before,{timeout:4000});
+  const moved=await illustrated.evaluate(()=>{
+    const after=window.__gameDiagnostics.target();
+    const beforeProjection=window.__stageDiagnostics.projected(0,-2);
+    const afterProjection=window.__stageDiagnostics.projected(after.x,after.z);
+    return {target:after,afterProjection,beforeProjection};
+  });
+  assert.ok(moved.target.x<before.x, 'right mouse motion moves world X negative');
+  assert.ok(moved.afterProjection.x>moved.beforeProjection.x,
+    'right mouse motion visually moves mallet right, not left');
+  await illustrated.screenshot({path:'mamouda-final-preview.png'});
+  assert.deepEqual(illustratedErrors,[], 'final arena must not throw JS errors');
+  await illustrated.close();
+  console.log('Browser smoke passed:',JSON.stringify(state),
+    'Mamouda:',JSON.stringify(stageInfo),'Painted:',JSON.stringify(paintedInfo));
 } finally {
   if(browser)await browser.close();
   await new Promise(resolve=>server.close(resolve));

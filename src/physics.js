@@ -1,4 +1,5 @@
-import { chooseAITarget, createAIBrain, recordAIHit } from './ai.js';
+import { createAIBrain, recordAIHit } from './ai.js';
+import {chooseCharacterAITarget} from './ai-profiles.js';
 // Local gameplay simulation. X/Z is the table plane; the Three.js scene is 3D.
 // This deliberately does not depend on the renderer or frame rate.
 export const DEFAULTS = Object.freeze({
@@ -213,7 +214,7 @@ export class Match {
       applyDirectMove(this.player, direct, (k+1)/steps);
       const aiTarget = this.awaitingServe && this.server === 1
         ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
-        : chooseAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
+        : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
       moveToward(this.ai, aiTarget, step, cfg, true);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;

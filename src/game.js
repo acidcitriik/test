@@ -1,10 +1,18 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
 import {Match, magnitude, clamp} from './physics.js';
 import {moveTargetWithMouse, moveTargetWithTouch} from './controls.js';
+import {createMamoudaStage} from './mamouda-stage.js';
+import {createMamoudaPaintedStage} from './mamouda-painted-stage.js';
+import {createMamoudaIllustratedStage} from './mamouda-illustrated.js';
 
 const canvas=document.getElementById('game'), overlay=document.getElementById('overlay');
 const playButton=document.getElementById('play');
 const match=new Match();
+const stageName=new URLSearchParams(window.location.search).get('stage');
+const showMamouda=stageName==='mamouda';
+const showMamoudaPainted=stageName==='mamouda-painted';
+const showMamoudaFinal=stageName==='mamouda-final';
+const anyMamouda=showMamouda||showMamoudaPainted||showMamoudaFinal;
 // Read-only diagnostic snapshots for input responsiveness regression tests.
 // No mutable engine state is exposed to browser scripts.
 window.__gameDiagnostics = Object.freeze({
@@ -27,6 +35,11 @@ scene.fog=new THREE.FogExp2(0x080f1b,0.018);
 const camera=new THREE.PerspectiveCamera(55,1,.1,150);
 camera.position.set(0,7.2,-10.9);
 camera.lookAt(0,.12,1.25);
+if(showMamoudaPainted){
+  // Cosmetic test only: gently lower the view to match illustrated perspective.
+  camera.position.set(0,6.55,-10.9);
+  camera.lookAt(0,.12,1.25);
+}
 // Keep the desktop camera exactly as it is. On touch devices raise the
 // viewing angle by 20 degrees, orbiting the same target at the same distance.
 const desktopCameraPosition=camera.position.clone();
@@ -65,8 +78,43 @@ box(w,.005,.028,0,.012,0,lineMat);
 function rinkRing(x,z,r,color){const points=[];for(let k=0;k<=80;k++){const a=k/80*Math.PI*2;points.push(new THREE.Vector3(x+r*Math.cos(a),.012,z+r*Math.sin(a)));}const geo=new THREE.BufferGeometry().setFromPoints(points),line=new THREE.Line(geo,new THREE.LineBasicMaterial({color,transparent:true,opacity:.55}));scene.add(line);}
 rinkRing(0,0,.88,0x66c9d7);rinkRing(0,-3.6,.85,0x45b4be);rinkRing(0,3.6,.85,0xdd995b);
 const floor=box(120,.25,120,0,-.9,0,mat(0x09111f,.03,.88));
-const grid=new THREE.GridHelper(90,50,0x13273a,0x13273a);grid.position.y=-.76;scene.add(grid);
-for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(.3,4,.3,Math.cos(a)*11,1,Math.sin(a)*10,mat(0x172c46,.6,.5));}
+const grid=new THREE.GridHelper(90,50,0x13273a,0x13273a);grid.position.y=-.76;if(!anyMamouda)scene.add(grid);
+if(!anyMamouda)for(let i=0;i<8;i++){const a=i/8*Math.PI*2;box(.3,4,.3,Math.cos(a)*11,1,Math.sin(a)*10,mat(0x172c46,.6,.5));}
+const stageFx=showMamouda?createMamoudaStage(THREE,scene,camera):showMamoudaPainted?createMamoudaPaintedStage(THREE,scene,camera):null;
+const illustratedFx=showMamoudaFinal?createMamoudaIllustratedStage({canvas,match}):null;
+window.__stageDiagnostics=Object.freeze({
+  name:showMamoudaFinal?'mamouda-final':showMamoudaPainted?'mamouda-painted':showMamouda?'mamouda':'lab',
+  ready:()=>illustratedFx?illustratedFx.ready:stageFx?.ready()??true,
+  backgroundLayers:()=>illustratedFx?.backgroundLayers??stageFx?.backgroundLayers??0,
+  projected:(x,z)=>illustratedFx?.project(x,z)??null,
+  projectedRadius:(x,z,r)=>illustratedFx?.displayRadius(x,z,r)??null
+});
+if(anyMamouda){
+  floor.material.color.set(0x090916);
+  floor.visible=false; // Prevent the huge neutral lab floor from masking painted bar layers.
+  board.color.set(0x2a1728);
+  rim.color.set(0x503047);
+  if(showMamoudaPainted){
+    // Purely visual: tune the existing table to the painted cyberpunk scene.
+    board.color.set(0x301629);
+    board.roughness=.14;
+    board.metalness=.48;
+    board.emissive.set(0x230718);
+    board.emissiveIntensity=.35;
+    rim.color.set(0x5a2038);
+    rim.metalness=.58;
+    rim.roughness=.27;
+    const paintedNeonRed=new THREE.MeshBasicMaterial({color:0xff385e,toneMapped:false});
+    const paintedNeonBlue=new THREE.MeshBasicMaterial({color:0x58cbf2,toneMapped:false});
+    box(.045,.024,L+.24,-w/2-.09,.31,0,paintedNeonBlue);
+    box(.045,.024,L+.24,w/2+.09,.31,0,paintedNeonRed);
+    box(g,.024,.045,0,.28,L/2+.12,paintedNeonRed);
+    box(g,.024,.045,0,.28,-L/2-.12,paintedNeonBlue);
+  }
+  document.getElementById('brand').textContent='SYNTHPUCK // MAMOUDA';
+  document.getElementById('dialogTitle').textContent='SYNTHPUCK — MAMOUDA';
+  document.querySelector('.lead').textContent=showMamoudaFinal?'TEST · ARÈNE ILLUSTRÉE · NÉON ANIMÉ':showMamoudaPainted?'TEST 2.5D · ILLUSTRATION':'TEST 2.5D · BAR CAPSULES';
+}
 function cylinder(rad,depth,color){const m=new THREE.Mesh(new THREE.CylinderGeometry(rad,rad,depth,48),mat(color,.52,.26));m.castShadow=true;m.receiveShadow=true;scene.add(m);return m;}
 const playerObj=cylinder(match.cfg.paddleRadius,.24,0x58e5e9),aiObj=cylinder(match.cfg.paddleRadius,.24,0xf6a969),puckObj=cylinder(match.cfg.puckRadius,.095,0xf8fcfc);
 const playerGlow=new THREE.PointLight(0x35e8ed,1.2,1.5);scene.add(playerGlow);
@@ -191,9 +239,11 @@ function resize(){
   const width=innerWidth,height=innerHeight;
   camera.aspect=width/height;
   camera.fov=height>width?66:55;
+  stageFx?.resize();
+  illustratedFx?.resize();
   updateCameraFraming(width,height);
   renderer.setSize(width,height,false);
 }
 addEventListener('resize',resize);resize();
-function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal');show(last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA','Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();renderer.render(scene,camera);}
+function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal');show(last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA','Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();stageFx?.update(ms/1000);illustratedFx?.update(ms/1000,active);if(!illustratedFx)renderer.render(scene,camera);}
 requestAnimationFrame(frame);
