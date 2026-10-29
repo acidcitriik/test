@@ -36,7 +36,7 @@ try{
  await page.waitForFunction(()=>document.documentElement.dataset.uiArt==='loaded');
  assert.equal(await page.locator('svg').count(),0,'No SVG in the active title screen');
  const menuBg=await page.locator('.menu-image').evaluate(el=>getComputedStyle(el).backgroundImage);
- assert.match(menuBg,/menu-hud\\.avif/,'Title/menu uses raster atlas');
+ assert.ok(menuBg.includes('menu-hud.avif'),'Title/menu uses raster atlas');
  await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
  assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
