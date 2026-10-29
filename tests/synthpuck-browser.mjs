@@ -131,6 +131,13 @@ try{
   return {rows,sprite:{w:sprite.width,h:sprite.height,spriteEdges}};
  });
  console.log('ART_CALIBRATION '+JSON.stringify(artScan));
+ const thumbnail=await page.evaluate(async()=>{
+  const img=new Image();img.src='./assets/stages/training.webp';await img.decode();
+  const c=document.createElement('canvas');c.width=672;c.height=378;
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return c.toDataURL('image/webp',0.55).split(',')[1];
+ });
+ console.log('STAGE_THUMBNAIL '+thumbnail);
  assert.deepEqual(errors,[],'No JS exceptions');
  assert.deepEqual(badAssets,[],'All assets must load');
  await page.close();
