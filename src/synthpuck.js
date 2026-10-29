@@ -136,7 +136,7 @@ function drawBackdrop(){
 function drawOpponent(){
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
   // Physically behind the far rail: character silhouette is clipped at its y=400.
-  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+400*layout.scale);bg.clip();
+  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+355*layout.scale);bg.clip();
   const height=260*layout.scale,width=image.width/image.height*height;
   const x=layout.x+NATIVE.w*layout.scale/2-width/2;
   const y=layout.y+135*layout.scale;
