@@ -25,7 +25,7 @@ try {
   const page=await browser.newPage({viewport:{width:1366,height:768}});
   const errors=[];
   page.on('pageerror',error=>errors.push(error.message));
-  await page.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
+  await page.goto('http://127.0.0.1:'+port+'/prototype.html,{waitUntil:'networkidle'});
   await page.locator('#game').waitFor();
   await page.getByRole('button',{name:'JOUER'}).click();
   await page.waitForFunction(()=>document.pointerLockElement?.id==='game');
@@ -83,7 +83,7 @@ try {
   });
   const mobileErrors=[];
   mobile.on('pageerror',e=>mobileErrors.push(e.message));
-  await mobile.goto('http://127.0.0.1:'+port+'/',{waitUntil:'networkidle'});
+  await mobile.goto('http://127.0.0.1:'+port+'/prototype.html,{waitUntil:'networkidle'});
   await mobile.locator('#play').click();
   await mobile.waitForFunction(()=>getComputedStyle(document.querySelector('#overlay')).display==='none');
   assert.equal(await mobile.evaluate(()=>document.pointerLockElement),null);
@@ -142,7 +142,7 @@ try {
   const stageErrors=[], failedResources=[];
   stage.on('pageerror',e=>stageErrors.push(e.message));
   stage.on('response',r=>{if(r.status()>=400)failedResources.push(r.url());});
-  await stage.goto('http://127.0.0.1:'+port+'/?stage=mamouda',{waitUntil:'networkidle'});
+  await stage.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda',{waitUntil:'networkidle'});
   await stage.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:30000});
   const stageInfo=await stage.evaluate(()=>({
     name:window.__stageDiagnostics.name,
@@ -162,7 +162,7 @@ try {
   const paintedErrors=[],paintedFailed=[];
   painted.on('pageerror',error=>paintedErrors.push(error.message));
   painted.on('response',response=>{if(response.status()>=400)paintedFailed.push(response.url());});
-  await painted.goto('http://127.0.0.1:'+port+'/?stage=mamouda-painted',{waitUntil:'networkidle'});
+  await painted.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda-painted',{waitUntil:'networkidle'});
   await painted.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:12000});
   const paintedInfo=await painted.evaluate(()=>({
     name:window.__stageDiagnostics.name,
@@ -186,7 +186,7 @@ try {
   illustrated.on('response',response=>{
     if(response.status()>=400)illustratedFailures.push(response.url());
   });
-  await illustrated.goto('http://127.0.0.1:'+port+'/?stage=mamouda-final',
+  await illustrated.goto('http://127.0.0.1:'+port+'/prototype.html?stage=mamouda-final',
     {waitUntil:'networkidle'});
   await illustrated.waitForFunction(()=>window.__stageDiagnostics?.ready(),null,{timeout:15000});
   const finalInfo=await illustrated.evaluate(()=>({
