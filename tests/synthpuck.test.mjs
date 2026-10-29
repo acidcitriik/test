@@ -9,6 +9,7 @@ const expected=['mute','chonk','simous','mamouda','diamond','stal','2502'];
 test('arcade sequence and win/loss transitions cover exactly seven opponents',()=>{
  assert.deepEqual(ARCADE_ORDER,expected);
  assert.equal(ROSTER.length,7);
+ assert.deepEqual(ROSTER.map(c=>c.arena),['USS SULACO','INFERNO','SALOON 1885','CAPSULE BAR','FHLOSTON PARADISE','NEBUCHADNEZZAR','SECTION 9 · 九課']);
  for(let i=0;i<7;i++){
   assert.deepEqual(nextArcadeLevel(i,false),{type:'retry',index:i});
   const next=nextArcadeLevel(i,true);

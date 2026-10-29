@@ -76,7 +76,7 @@ function beginMatch(){
   $('fighterName').textContent=opponent.name;
   $('fighterName').hidden=false;hud.hidden=false;
   $('hudMode').textContent=mode.toUpperCase();
-  $('hudStage').textContent=`${opponent.arena} · ${opponent.name}`;
+  $('hudStage').textContent=mode==='training'?`GRID 00 · ${opponent.name}`:`${opponent.arena} · ${opponent.name}`;
   $('hudLevel').textContent=mode==='arcade'?`${String(level+1).padStart(2,'0')} / 07`:'GRID 00';
   touchBar.hidden=!isTouch();
   if(isTouch())selectTouchMode(inputMode);

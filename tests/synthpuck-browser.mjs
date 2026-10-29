@@ -67,6 +67,7 @@ try{
   const snap=await page.evaluate(()=>__synthpuck.snapshot());
   assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
   assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
+  assert.match(await page.locator('#hudStage').innerText(),/^GRID 00 · /);
   await page.keyboard.press('Escape');
   await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
   await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
