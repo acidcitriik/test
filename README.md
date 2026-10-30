@@ -54,3 +54,11 @@ Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveu
 - Aucun SVG ni rectangle vectoriel n’est ajouté à l’illustration du menu ou aux objets mobiles.
 
 - `assets/ui/studio-splash-hd.avif` : version agrandie et légèrement accentuée du **même logo PiperadeGames approuvé, avec un seul piment** ; aucun changement de composition ni ajout d'illustration. Le fichier source historique 640 × 360 est conservé comme archive.
+
+### Améliorations de présentation (30 octobre 2026)
+
+- Détourage des six adversaires repris à partir des portraits existants : alpha plein à l’intérieur et repli de 2 px du masque pour éliminer les pixels de fond dans les cheveux/épaules.
+- Suppression de l’ombre colorée artificielle autour des adversaires dans le moteur.
+- Adversaires réduits de 260 à 184 px dans le repère natif, ancrés derrière le rail éloigné à Y 385.
+- Score et plaques HUD ancrés à la zone de la scène 1672 × 941 (et non aux bandes noires du viewport), libellés intégrés dans les panneaux, nom d’adversaire redondant masqué.
+- Vérifications visuelles automatisées à 1672 × 941 et 1780 × 800, plus six captures individuelles des adversaires.

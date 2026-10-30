@@ -55,6 +55,22 @@ try{
  const first=await page.evaluate(()=>__synthpuck.snapshot());
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
+ assert.equal(first.opponentHeightNative,184,'The opponent is reduced and anchored behind the far rail');
+ assert.equal(await page.locator('#fighterName').isHidden(),true,'Do not stack a redundant fighter name below the score');
+ const hudPlacement=await page.evaluate(()=>{
+   const hud=document.querySelector('#hud').getBoundingClientRect();
+   const left=document.querySelector('.hud-left').getBoundingClientRect();
+   const right=document.querySelector('.hud-right').getBoundingClientRect();
+   const score=document.querySelector('#score').getBoundingClientRect();
+   const {left:stageLeft,width:stageWidth}=__synthpuck.snapshot().arenaFrame;
+   const textInside=sel=>{const a=document.querySelector(sel).getBoundingClientRect();return a.top>=hud.top && a.bottom<=hud.bottom;};
+   return {hudLeft:hud.left,left:left.left,right:right.right,scoreCenter:score.left+score.width/2,stageLeft,stageWidth,
+    smallLeftInside:textInside('.hud-left small'),smallRightInside:textInside('.hud-right small')};
+ });
+ assert.ok(hudPlacement.left>=hudPlacement.stageLeft,'The left HUD panel must stay within the visible game arena');
+ assert.ok(hudPlacement.right<=hudPlacement.stageLeft+hudPlacement.stageWidth,'The right HUD panel must stay within the visible game arena');
+ assert.ok(Math.abs(hudPlacement.scoreCenter-(hudPlacement.stageLeft+hudPlacement.stageWidth/2))<12,'Score must align with the center of the painted table');
+ assert.ok(hudPlacement.smallLeftInside&&hudPlacement.smallRightInside,'HUD category labels must no longer float above the entire HUD');
  const scoreBox=await page.locator('#score').boundingBox();
  assert.ok(scoreBox.width>105&&scoreBox.height<120,
    `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
@@ -106,6 +122,7 @@ try{
   assert.equal(await page.locator('.stat-line').count(),4);
   await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
   await page.waitForFunction(()=>__synthpuck.snapshot().ready);
+  if(id!=='2502')await page.screenshot({path:`synthpuck-opponent-${id}-preview.png`});
   const snap=await page.evaluate(()=>__synthpuck.snapshot());
   assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
   assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
@@ -123,13 +140,24 @@ try{
  assert.equal(await page.locator('svg').count(),0,'No SVG in the training arena');
  // Verify that the complete table is visible on phones and wide screens;
  // the same world-to-stage projection must be used for all eight arenas.
- for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1672,height:941}]){
+ for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1780,height:800},{width:1672,height:941}]){
   await page.setViewportSize(viewport);
   await page.waitForFunction(v=>{
    const size=window.__synthpuck.snapshot().viewport;
    return size.width===v.width&&size.height===v.height;
   },viewport);
   if(viewport.width===844)await page.screenshot({path:'synthpuck-landscape-preview.png'});
+  if(viewport.width===1780){
+    await page.screenshot({path:'synthpuck-wide-hud-preview.png'});
+    const boxes=await page.evaluate(()=>{
+      const stage=__synthpuck.snapshot().arenaFrame;
+      const left=document.querySelector('.hud-left').getBoundingClientRect();
+      const right=document.querySelector('.hud-right').getBoundingClientRect();
+      return {stage,left:left.left,right:right.right};
+    });
+    assert.ok(boxes.left>=boxes.stage.left,'Wide screen HUD must not overflow left black bar');
+    assert.ok(boxes.right<=boxes.stage.left+boxes.stage.width,'Wide screen HUD must not overflow right black bar');
+  }
   const points=await page.evaluate(()=>[
    __synthpuck.project(-2.9,-5),__synthpuck.project(2.9,-5),
    __synthpuck.project(-2.9,5),__synthpuck.project(2.9,5)

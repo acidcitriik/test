@@ -194,3 +194,83 @@
  .menu.menu-hotspots .btn{top:74.4%;height:15.1%}
  #touchBar button{font-size:10px!important}
 }
+
+/* SYNTHPUCK VISUAL QA / 2026-10-30 : clean in-match HUD and alpha cutouts.
+   The original table geometry, painted arenas and interactive menu are untouched.
+   Unlike the previous HUD, these panels anchor to the visible game viewport. */
+:root{--arena-side:0px;--arena-top:0px;--arena-width:100vw}
+#hud{
+ left:calc(var(--arena-side) + 10px);
+ right:calc(var(--arena-side) + 10px);
+ top:calc(var(--arena-top) + 8px);
+ bottom:auto;
+ inset-block-end:auto;
+ gap:clamp(5px,calc(var(--arena-width) * .008),12px);
+ align-items:flex-start;
+ justify-content:space-between;
+}
+#hud>div.hud-left,#hud>div.hud-right{
+ width:clamp(85px,calc(var(--arena-width) * .19),276px);
+ height:clamp(40px,calc(var(--arena-width) * .043),62px);
+ min-height:0;
+ padding:clamp(6px,calc(var(--arena-width) * .009),14px) 18px 5px;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ gap:3px;
+ text-align:center;
+ background-position:center;
+ background-size:100% 100%;
+ flex-shrink:1;
+}
+#hud small{
+ display:block;
+ flex-shrink:0;
+ color:#bdefff;
+ font:800 clamp(8px,calc(var(--arena-width) * .008),12px) Rajdhani,sans-serif;
+ line-height:1.1;
+ letter-spacing:.08em;
+ text-shadow:0 2px 3px #020610;
+}
+#hud strong{
+ display:block;
+ font:900 clamp(9px,calc(var(--arena-width) * .011),18px) 'Barlow Condensed',sans-serif;
+ line-height:1.15;
+ max-width:100%;
+ white-space:nowrap;
+ overflow:hidden;
+ text-overflow:ellipsis;
+ text-shadow:0 1px 4px #000;
+}
+#hud #score{
+ width:clamp(87px,calc(var(--arena-width) * .147),218px);
+ min-width:0;
+ height:clamp(38px,calc(var(--arena-width) * .043),63px);
+ min-height:0;
+ padding:0 10px;
+ line-height:1;
+ font-size:clamp(26px,calc(var(--arena-width) * .034),50px);
+ flex-shrink:0;
+ background-size:100% 100%;
+}
+#hud #score span{padding:0 clamp(2px,calc(var(--arena-width)*.006),8px)}
+#fighterName{display:none!important}
+/* A pause button is shown on touch devices only, without displacing the score. */
+@media(pointer:coarse){
+ #hud{gap:2px}
+ #pauseButton{
+  width:clamp(26px,calc(var(--arena-width) * .038),43px);
+  height:clamp(26px,calc(var(--arena-width) * .038),43px);
+  flex:0 0 auto;
+  margin-left:2px;
+ }
+ #hud>div.hud-left,#hud>div.hud-right{padding-left:5px;padding-right:5px}
+}
+@media(max-width:650px){
+ #hud{left:calc(var(--arena-side) + 3px);right:calc(var(--arena-side) + 3px);top:calc(var(--arena-top) + 2px)}
+ #hud>div.hud-left,#hud>div.hud-right{padding:7px 2px 2px;gap:1px}
+ #hud small{font-size:7px}
+ #hud strong{font-size:9px}
+ #hud #score{padding:0 2px;font-size:25px}
+}

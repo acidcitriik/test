@@ -53,4 +53,6 @@ jobs:
             synthpuck-title-preview.png
             synthpuck-character-select-preview.png
             synthpuck-landscape-preview.png
+            synthpuck-wide-hud-preview.png
+            synthpuck-opponent-*-preview.png
           if-no-files-found: ignore

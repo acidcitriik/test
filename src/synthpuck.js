@@ -6,6 +6,8 @@ import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
 const NATIVE={w:1672,h:941};
+// Stage-normalised portrait height. Every real opponent stays behind the far rail.
+const OPPONENT_HEIGHT_NATIVE=184;
 const $=id=>document.getElementById(id);
 const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
@@ -26,7 +28,7 @@ const statsHtml=c=>`<div class="stats" style="--accent:${c.accent}">${STAT_NAMES
 const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp" alt="Portrait de ${c.name}"/>`;
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
 const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
-function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=name!=='playing';}
+function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
@@ -76,7 +78,7 @@ function beginMatch(){
   currentStage=stageIdFor(mode,opponent.id);
   setBackground(currentStage,true);createMatch();
   $('fighterName').textContent=opponent.name;
-  $('fighterName').hidden=false;hud.hidden=false;
+  $('fighterName').hidden=true;hud.hidden=false;
   $('hudMode').textContent=mode.toUpperCase();
   $('hudStage').textContent=mode==='training'?`GRID 00 · ${opponent.name}`:`${opponent.arena} · ${opponent.name}`;
   $('hudLevel').textContent=mode==='arcade'?`${String(level+1).padStart(2,'0')} / 07`:'GRID 00';
@@ -151,6 +153,10 @@ function resize(){
   // Cover-cropping hides the goals on tall phones and makes the duel unplayable.
   layout={cssW,cssH,dpr,scale:Math.min(cssW/NATIVE.w,cssH/NATIVE.h),x:0,y:0};
   layout.x=(cssW-NATIVE.w*layout.scale)/2;layout.y=(cssH-NATIVE.h*layout.scale)/2;
+  // Align the HUD with the actual letterboxed arena, never the black side bands.
+  document.documentElement.style.setProperty('--arena-side',`${layout.x}px`);
+  document.documentElement.style.setProperty('--arena-top',`${layout.y}px`);
+  document.documentElement.style.setProperty('--arena-width',`${NATIVE.w*layout.scale}px`);
   for(const c of [arena,backdrop]){c.width=Math.round(cssW*dpr);c.height=Math.round(cssH*dpr);}
   ctx.setTransform(dpr,0,0,dpr,0,0);
   bg.setTransform(dpr,0,0,dpr,0,0);
@@ -170,10 +176,15 @@ function drawOpponent(){
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
   // The character sits behind the visible far rail (same fixed geometry as the puck).
   bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+385*layout.scale);bg.clip();
-  const height=260*layout.scale,width=image.width/image.height*height;
+  // Smaller at the calibrated far rail, free of the artificial neon shadow
+  // that used to make every hair edge look like a failed alpha cut-out.
+  const height=OPPONENT_HEIGHT_NATIVE*layout.scale;
+  const width=image.naturalWidth/image.naturalHeight*height;
   const x=layout.x+NATIVE.w*layout.scale/2-width/2;
-  const y=layout.y+135*layout.scale;
-  bg.shadowColor=opponent.accent;bg.shadowBlur=24*layout.scale;
+  const y=layout.y+(385-OPPONENT_HEIGHT_NATIVE)*layout.scale;
+  bg.imageSmoothingEnabled=true;
+  bg.imageSmoothingQuality='high';
+  bg.shadowBlur=0;
   bg.drawImage(image,x,y,width,height);
   bg.restore();
 }
@@ -314,6 +325,8 @@ window.__synthpuck=Object.freeze({
     spriteSizes:Object.fromEntries(Object.entries(images.sprites).map(([type,img])=>[type,[img.naturalWidth||0,img.naturalHeight||0]])),
     viewport:{width:layout.cssW,height:layout.cssH},
     uiArtReady,
+    opponentHeightNative:OPPONENT_HEIGHT_NATIVE,
+    arenaFrame:{left:layout.x,top:layout.y,width:NATIVE.w*layout.scale,height:NATIVE.h*layout.scale},
     halEyeReady:Boolean(images.halEye?.complete&&images.halEye.naturalWidth),
     halEyePosition:currentStage===HAL_STAGE_ID?{...halGaze}:null,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
