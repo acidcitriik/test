@@ -50,3 +50,18 @@
 /* Explicitly override the earlier #hud>div grid: keep 0 : 0 in one row. */
 #hud #score{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:0;grid-template-columns:none;grid-template-rows:none;overflow:hidden;white-space:nowrap}
 #hud #score span{display:inline-block;align-self:center}
+
+/* 2026-10-30: Compact in-match HUD. Preserve painted look without oversized plates. */
+#hud{inset:6px 12px auto;gap:8px}
+#hud>div.hud-left,#hud>div.hud-right{width:clamp(105px,17vw,255px);min-height:clamp(32px,4.2vw,58px);padding:5px 12px}
+#hud small{font-size:clamp(9px,.8vw,12px);letter-spacing:.04em}
+#hud strong{font-size:clamp(11px,1.1vw,16px)}
+#hud #score{min-width:80px;width:clamp(82px,11vw,150px);height:clamp(35px,4.4vw,62px);font-size:clamp(25px,3vw,44px);padding:0 5px;flex-shrink:1}
+#hud #score span{padding:0 3px}
+#pauseButton{width:clamp(30px,3vw,42px);height:clamp(30px,3vw,42px)}
+#fighterName{top:9%;min-width:0;max-width:35vw;font-size:clamp(12px,1.3vw,17px);padding:4px 14px}
+/* No nearest-neighbour sampling of photographic/painted artwork. */
+.studio-image,.menu-image,#hud>div,#hud #score,#pauseButton,.btn,.fight-card,.compact-center,.roster-card{image-rendering:auto}
+/* Do not upscale cropped decorative plates past their useful source resolution. */
+.btn,.btn.primary{background-size:100% 100%}
+@media(max-width:760px){#hud{inset:3px 4px auto;gap:3px}#hud>div.hud-left,#hud>div.hud-right{width:27%;min-height:32px;padding:3px}#hud small{font-size:8px}#hud strong{font-size:10px}#hud #score{min-width:58px;width:17%;height:34px;font-size:25px}#pauseButton{width:28px;height:28px}#fighterName{font-size:12px;top:8%}}
