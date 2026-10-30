@@ -93,6 +93,7 @@ try{
  assert.equal(await page.locator('#fighterName').isHidden(),true,'No character name over menus');
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  assert.equal(await page.locator('.roster-card').count(),7);
+ assert.equal(await page.locator('[data-character="2502"] strong').innerText(),'HAL');
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
  assert.equal(await page.locator('svg').count(),0,'No SVG in character selection');
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
@@ -114,6 +115,7 @@ try{
  await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.screenshot({path:'synthpuck-training-preview.png'});
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).halEyePosition,null,'Training uses the neutral backdrop');
  assert.equal(await page.locator('svg').count(),0,'No SVG in the training arena');
  // Verify that the complete table is visible on phones and wide screens;
  // the same world-to-stage projection must be used for all eight arenas.

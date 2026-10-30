@@ -8,7 +8,7 @@ export const ROSTER=Object.freeze([
  {id:'mamouda',name:'MAMOUDA',epithet:'LE FONCEUR',arena:'CAPSULE BAR',bio:'Vif, provocateur, toujours à l’attaque.',stats:[4,4,5,3],aiSpeed:5.2,aiAcceleration:34,style:'rush',accent:'#ff5069'},
  {id:'diamond',name:'DIAMOND',epithet:'L’EXCENTRIQUE',arena:'FHLOSTON PARADISE',bio:'Du spectacle, des angles et des feintes.',stats:[3,3,3,4],aiSpeed:5.7,aiAcceleration:39,style:'showboat',accent:'#bf86ff'},
  {id:'stal',name:'STAL',epithet:'LE LOSER',arena:'NEBUCHADNEZZAR',bio:'Il rate tout… sauf lorsqu’on s’y attend le moins.',stats:[2,2,2,2],aiSpeed:6.35,aiAcceleration:43,style:'erratic',accent:'#99dbbc'},
- {id:'2502',name:'2502',epithet:'L’INTELLIGENCE ALTÉRÉE',arena:'SECTION 9 · 九課',bio:'Analyse, apprend, puis frappe au bon moment.',stats:[3,4,3,5],aiSpeed:6.9,aiAcceleration:49,style:'adaptive',accent:'#76d9ff'}
+ {id:'2502',name:'HAL',epithet:'L’ŒIL QUI VOIT TOUT',arena:'RED CORE',bio:'Son regard suit chaque trajectoire. La salle entière est son corps.',stats:[5,5,4,1],aiSpeed:6.9,aiAcceleration:49,style:'adaptive',accent:'#ff4a52'}
 ]);
 export const STAT_NAMES=['TECHNIQUE','DÉFENSE','ATTAQUE','IMPRÉVISIBILITÉ'];
 export const CHARACTER_INDEX=Object.freeze(Object.fromEntries(ROSTER.map((p,i)=>[p.id,i])));

@@ -1,5 +1,6 @@
 import {Match,clamp,magnitude} from './physics.js';
 import {SPRITE_URLS} from './synthpuck-sprite-art.js';
+import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
@@ -10,7 +11,8 @@ const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
 const ctx=arena.getContext('2d');
 const hud=$('hud'),touchBar=$('touchBar');
-const images={stages:{},characters:{},sprites:{}};
+const images={stages:{},characters:{},sprites:{},halEye:null};
+let halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};
 let mode='arcade',level=0,selected='mute',opponent=ROSTER[0];
 let currentStage='mamouda',screen='splash',match=null,active=false;
 let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
@@ -69,7 +71,7 @@ function showMatchEnd(){
   }
   document.exitPointerLock?.();
 }
-function createMatch(){opponent=mode==='training'?getCharacter(selected):ROSTER[level];match=new Match(matchConfiguration(opponent));match.serve();}
+function createMatch(){opponent=mode==='training'?getCharacter(selected):ROSTER[level];match=new Match(matchConfiguration(opponent));match.serve();halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};}
 function beginMatch(){
   currentStage=stageIdFor(mode,opponent.id);
   setBackground(currentStage,true);createMatch();
@@ -116,6 +118,8 @@ function loadImage(src){const img=new Image();img.decoding='async';img.addEventL
 for(const p of ROSTER)images.characters[p.id]=loadImage(`./assets/characters/${p.id}.webp`);
 for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','training']) images.stages[name]=loadImage(`./assets/stages/${name}.webp`);
 for(const type of ['player','puck','ai'])images.sprites[type]=loadImage(SPRITE_URLS[type]);
+// HAL is built into the final stage; the independently painted retina moves at runtime.
+images.halEye=loadImage('./assets/characters/hal-eye.webp');
 // Runtime raster cropping of the approved painted atlas. Never draw vector panels.
 // Frame 1 (0..225): title/menu, frame 2 (225..450): illustrated HUD.
 // We sample unlabelled painted plates for live score / names / stats.
@@ -166,6 +170,8 @@ function drawBackdrop(){
   if(showFarOpponent)drawOpponent();
 }
 function drawOpponent(){
+  // HAL's black lens is already part of the final backdrop: never overlay a character here.
+  if(currentStage===HAL_STAGE_ID)return;
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
   // The character sits behind the visible far rail (same fixed geometry as the puck).
   bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+385*layout.scale);bg.clip();
@@ -232,7 +238,24 @@ function drawObject(obj,type){
   ctx.fillStyle=type==='player'?'#4ce3ff':type==='ai'?'#ff4865':'#f0faff';ctx.fill();
  }
 }
-function drawActors(){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)return;
+function drawHalEye(dt){
+  if(currentStage!==HAL_STAGE_ID||!match)return;
+  const eye=images.halEye;
+  if(!eye?.complete||!eye.naturalWidth)return;
+  const target=halEyeTarget(match.puck,match.cfg);
+  const easing=1-Math.exp(-9*Math.max(0,Math.min(dt,0.05)));
+  halGaze.x+=(target.x-halGaze.x)*easing;
+  halGaze.y+=(target.y-halGaze.y)*easing;
+  const c=HAL_EYE_CALIBRATION,scale=layout.scale;
+  ctx.save();
+  // Keep the moving retina inside the black, raster-painted aperture.
+  ctx.beginPath();ctx.arc(layout.x+c.x*scale,layout.y+c.y*scale,c.apertureRadius*scale,0,Math.PI*2);ctx.clip();
+  const size=c.spriteSize*scale;
+  ctx.drawImage(eye,layout.x+halGaze.x*scale-size/2,layout.y+halGaze.y*scale-size/2,size,size);
+  ctx.restore();
+}
+function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)return;
+  drawHalEye(dt);
   // The far opponent's paddle is behind the centre puck, which is behind the player's paddle.
   const actors=[{...match.ai,type:'ai'},{...match.puck,type:'puck'},
     {...(active?match.target:match.player),type:'player'}];
@@ -255,7 +278,7 @@ function frame(time){
     else if(match.state==='ready'){showPoint();}
   }
   if(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth && !frame.stageReady){drawBackdrop();frame.stageReady=true;}
-  if(screen==='playing'||screen==='pause'||screen==='point'||screen==='result'){drawActors();updateHud();}
+  if(screen==='playing'||screen==='pause'||screen==='point'||screen==='result'){drawActors(dt);updateHud();}
 }
 function setBackground(stage,withOpponent){
   currentStage=stage;showFarOpponent=withOpponent;ctx.clearRect(0,0,layout.cssW,layout.cssH);frame.stageReady=false;
@@ -299,6 +322,8 @@ window.__synthpuck=Object.freeze({
     spriteSizes:Object.fromEntries(Object.entries(images.sprites).map(([type,img])=>[type,[img.naturalWidth||0,img.naturalHeight||0]])),
     viewport:{width:layout.cssW,height:layout.cssH},
     uiArtReady,
+    halEyeReady:Boolean(images.halEye?.complete&&images.halEye.naturalWidth),
+    halEyePosition:currentStage===HAL_STAGE_ID?{...halGaze}:null,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),
