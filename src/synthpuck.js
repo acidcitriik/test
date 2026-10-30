@@ -1,4 +1,5 @@
 import {Match,clamp,magnitude} from './physics.js';
+import {SPRITE_URLS} from './synthpuck-sprite-art.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
@@ -9,7 +10,7 @@ const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
 const ctx=arena.getContext('2d');
 const hud=$('hud'),touchBar=$('touchBar');
-const images={stages:{},characters:{},sprites:null};
+const images={stages:{},characters:{},sprites:{}};
 let mode='arcade',level=0,selected='mute',opponent=ROSTER[0];
 let currentStage='mamouda',screen='splash',match=null,active=false;
 let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
@@ -114,7 +115,7 @@ touchBar.addEventListener('click',e=>{const b=e.target.closest('[data-touch-mode
 function loadImage(src){const img=new Image();img.decoding='async';img.addEventListener('load',()=>{frame.stageReady=false;drawBackdrop();});img.src=src;return img;}
 for(const p of ROSTER)images.characters[p.id]=loadImage(`./assets/characters/${p.id}.webp`);
 for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','training']) images.stages[name]=loadImage(`./assets/stages/${name}.webp`);
-images.sprites=loadImage('./assets/mamouda/sprites.webp');
+for(const type of ['player','puck','ai'])images.sprites[type]=loadImage(SPRITE_URLS[type]);
 // Runtime raster cropping of the approved painted atlas. Never draw vector panels.
 // Frame 1 (0..225): title/menu, frame 2 (225..450): illustrated HUD.
 // We sample unlabelled painted plates for live score / names / stats.
@@ -197,30 +198,33 @@ function projectedRadius(x,z,r){
   const a=project(x-r,z),b=project(x+r,z),c=project(x,z-r),d=project(x,z+r);
   return {rx:Math.max(3,Math.abs(b.x-a.x)/2),ry:Math.max(2,Math.abs(c.y-d.y)/2)};
 }
-// Existing atlas is not damaged: verified alpha bounds are inset from all crop
-// edges. Size by OPAQUE silhouette width (not the padded crop rectangle).
-// This keeps the two paddles and puck faithful to their moving physics radii.
+// Independent transparent artwork. No source rectangles, so no cropped heads,
+// rims or cut puck edges. Alpha margins are part of each image.
 const spriteArt=Object.freeze({
- player:{crop:[0,0,250,155],inkWidth:214,anchor:.83},
- ai:{crop:[250,0,262,155],inkWidth:214,anchor:.83},
- puck:{crop:[0,155,125,85],inkWidth:82,anchor:.63}
+ player:{inkWidth:274,anchor:.83},
+ ai:{inkWidth:246,anchor:.83},
+ puck:{inkWidth:271,anchor:.66}
 });
 function spriteGeometry(obj,type){
  const p=project(obj.x,obj.z);
  const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
  const {rx}=projectedRadius(obj.x,obj.z,radius);
- const sprite=spriteArt[type],width=(2*rx*0.98)*sprite.crop[2]/sprite.inkWidth;
- const height=width*sprite.crop[3]/sprite.crop[2];
+ const sprite=spriteArt[type],img=images.sprites[type];
+ const sourceWidth=img?.naturalWidth || (type==='ai'?281:type==='player'?309:308);
+ const sourceHeight=img?.naturalHeight || (type==='player'?224:205);
+ const width=2*rx*.98*sourceWidth/sprite.inkWidth;
+ const height=width*sourceHeight/sourceWidth;
  return {x:p.x-width/2,y:p.y-height*sprite.anchor,width,height};
 }
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
- const {crop}=spriteArt[type],img=images.sprites;
+ const img=images.sprites[type];
  if(img?.complete&&img.naturalWidth){
-  ctx.save();ctx.shadowColor='#030712c9';ctx.shadowBlur=8*layout.scale;
-  // Draw the entire source cell including transparent breathing space:
-  // no implicit clip and no stretched fractional source sub-rectangle.
-  ctx.drawImage(img,...crop,x,y,width,height);
+  ctx.save();
+  ctx.imageSmoothingEnabled=true;
+  ctx.imageSmoothingQuality='high';
+  ctx.shadowColor='#030712b8';ctx.shadowBlur=5*layout.scale;
+  ctx.drawImage(img,x,y,width,height);
   ctx.restore();
  }else{
   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg[type==='puck'?'puckRadius':'paddleRadius']);
@@ -292,6 +296,7 @@ window.__synthpuck=Object.freeze({
   snapshot:()=>({screen,mode,level,opponent:opponent.id,stage:currentStage,
     score:match?[...match.scores]:null,state:match?.state??null,
     ready:Boolean(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth),
+    spriteSizes:Object.fromEntries(Object.entries(images.sprites).map(([type,img])=>[type,[img.naturalWidth||0,img.naturalHeight||0]])),
     viewport:{width:layout.cssW,height:layout.cssH},
     uiArtReady,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
