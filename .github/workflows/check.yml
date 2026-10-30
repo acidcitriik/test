@@ -23,6 +23,8 @@ jobs:
           node --check src/roster.js
           node --check src/ai-profiles.js
           node --check src/campaign.js
+          node --check src/synthpuck-sprite-art.js
+          node --check src/hal-eye.js
           node --check src/synthpuck.js
           node --check tests/synthpuck-browser.mjs
           node --check tests/synthpuck.test.mjs

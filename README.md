@@ -43,3 +43,12 @@ node tests/synthpuck-browser.mjs
 Les vérifications automatiques couvrent les règles physiques, les profils de difficulté, l'ordre des personnages, l'interface, les choix de l'entraînement, la projection commune, l'absence de ressources manquantes et la possibilité de jouer et mettre en pause.
 
 Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveur multijoueur ou système anti-triche n'est inclus.
+## Assets HD (30 octobre 2026)
+
+- `assets/ui/menu-hd.avif` : menu principal validé en **1672 × 941**, rendu à la bonne proportion sur tout écran.
+- `assets/ui/panel-{blue,red,neutral}.webp` et `pause.webp` : éléments de HUD en images séparées, sans agrandissement de l’ancien atlas basse définition.
+- `assets/sprites/{paddle-player,puck,paddle-ai}.webp` : découpe HD des trois dessins approuvés, transparence externe et marges de sécurité ; rayon physique préservé.
+- Les six portraits de face détourés et `assets/characters/2502.webp` (HAL) restent en place.
+- Le niveau `assets/stages/2502.webp` (RED CORE) conserve **l'ouverture noire sans œil dessiné** : l'œil est animé à partir du palet par `src/hal-eye.js`.
+- La calibration commune **1672 × 941 / Y 390, 544, 770** reste strictement inchangée.
+- Aucun SVG ni rectangle vectoriel n’est ajouté à l’illustration du menu ou aux objets mobiles.

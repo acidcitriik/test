@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {chromium} from 'playwright';
 const root=resolve(import.meta.dirname,'..');
-const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webp':'image/webp','.svg':'image/svg+xml'};
+const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webp':'image/webp','.avif':'image/avif','.png':'image/png','.svg':'image/svg+xml'};
 const server=http.createServer(async(req,res)=>{
  try{const p=new URL(req.url,'http://localhost').pathname;
   const f=resolve(root,'.'+(p==='/'?'/index.html':p));if(!f.startsWith(root+sep))throw Error('Forbidden');
@@ -36,7 +36,9 @@ try{
  await page.waitForFunction(()=>document.documentElement.dataset.uiArt==='loaded');
  assert.equal(await page.locator('svg').count(),0,'No SVG in the active title screen');
  const menuBg=await page.locator('.menu-image').evaluate(el=>getComputedStyle(el).backgroundImage);
- assert.ok(menuBg.includes('menu-hud.avif'),'Title/menu uses raster atlas');
+ assert.ok(menuBg.includes('menu-hd.avif'),'The title/menu must use the validated HD image, not the old atlas');
+ const menuResolution=await page.evaluate(()=>new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve([i.naturalWidth,i.naturalHeight]);i.onerror=reject;i.src='./assets/ui/menu-hd.avif';}));
+ assert.deepEqual(menuResolution,[1672,941],'Full-resolution menu image must load without stretching a small atlas');
  await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
  assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
@@ -48,7 +50,7 @@ try{
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing');
  await page.waitForFunction(()=>Object.values(__synthpuck.snapshot().spriteSizes).length===3 && Object.values(__synthpuck.snapshot().spriteSizes).every(([w,h])=>w>0&&h>0));
- assert.deepEqual((await page.evaluate(()=>__synthpuck.snapshot().spriteSizes)),{player:[309,224],puck:[308,205],ai:[281,205]},'All three approved transparent sprites are loaded');
+ assert.deepEqual((await page.evaluate(()=>__synthpuck.snapshot().spriteSizes)),{player:[674,482],puck:[549,361],ai:[672,482]},'All three HD approved sprites load at full resolution');
  const first=await page.evaluate(()=>__synthpuck.snapshot());
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
@@ -62,7 +64,10 @@ try{
   const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName'];
   return selectors.map(selector=>({selector,bg:getComputedStyle(document.querySelector(selector)).backgroundImage}));
  });
- assert.ok(painted.every(entry=>entry.bg.startsWith('url(')),'HUD and button panels are raster-painted: '+JSON.stringify(painted));
+ assert.ok(painted.every(entry=>entry.bg.startsWith('url(') && !entry.bg.includes('data:image')),'The HUD uses separate high-res painted assets, not enlarged base64 atlases: '+JSON.stringify(painted));
+ assert.ok(painted.some(entry=>entry.bg.includes('panel-red.webp')),'The scoreboard uses the new full-resolution red plate');
+ const buttonBox=await page.getByRole('button',{name:'ARCADE'}).boundingBox();
+ assert.ok(buttonBox===null || buttonBox.width>0);
  assert.equal(await page.locator('svg').count(),0,'No in-game vector graphics');
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
@@ -179,7 +184,7 @@ try{
  });
  assert.equal(artScan.spriteEdges.length,3);
  for(const sprite of artScan.spriteEdges){
-  assert.ok(sprite.width>=280 && sprite.height>=200, sprite.type+' must retain source detail');
+  assert.ok(sprite.width>=540 && sprite.height>=350, sprite.type+' must retain HD source detail');
   assert.deepEqual(sprite.edge,[0,0,0,0],sprite.type+' must have transparent safety margins on every side');
  }
 

@@ -65,3 +65,132 @@
 /* Do not upscale cropped decorative plates past their useful source resolution. */
 .btn,.btn.primary{background-size:100% 100%}
 @media(max-width:760px){#hud{inset:3px 4px auto;gap:3px}#hud>div.hud-left,#hud>div.hud-right{width:27%;min-height:32px;padding:3px}#hud small{font-size:8px}#hud strong{font-size:10px}#hud #score{min-width:58px;width:17%;height:34px;font-size:25px}#pauseButton{width:28px;height:28px}#fighterName{font-size:12px;top:8%}}
+
+/* SYNTHPUCK HD art refresh, 2026-10-30.
+   Direct raster assets at their source resolution: never crop/enlarge the old
+   10 KB menu/HUD atlas. The validated gameplay world projection is untouched. */
+:root {
+ --plate-blue:url('../assets/ui/panel-blue.webp');
+ --plate-red:url('../assets/ui/panel-red.webp');
+ --plate-neutral:url('../assets/ui/panel-neutral.webp');
+ --plate-pause:url('../assets/ui/pause.webp');
+ --touch-normal:url('../assets/ui/panel-neutral.webp');
+ --touch-rigid:url('../assets/ui/panel-red.webp');
+ --touch-soft:url('../assets/ui/panel-blue.webp');
+ --touch-spin:url('../assets/ui/panel-red.webp');
+}
+.menu-image {
+ background-image:url('../assets/ui/menu-hd.avif');
+ background-size:100% 100%;
+ background-position:center center;
+ image-rendering:auto;
+}
+/* The four clickable hit zones match the four HD illustrated buttons.
+   Keep the source text hidden ONLY on this menu (the labels are painted). */
+.menu.menu-hotspots .btn {
+ top:74.4%;
+ height:15.1%;
+ width:21.5%;
+ background:transparent!important;
+ font-size:1px!important;
+ color:transparent!important;
+ pointer-events:auto;
+}
+.menu.menu-hotspots .btn:nth-child(1){left:6.3%}
+.menu.menu-hotspots .btn:nth-child(2){left:28.7%}
+.menu.menu-hotspots .btn:nth-child(3){left:50.8%}
+.menu.menu-hotspots .btn:nth-child(4){left:72.9%}
+.menu.menu-hotspots .btn:hover:not(:disabled){
+ transform:none;
+ outline:3px solid #69e6ff;
+ outline-offset:-5px;
+ box-shadow:inset 0 0 28px #52c7ff65;
+}
+.menu.menu-hotspots .btn:focus-visible{outline:4px solid white;outline-offset:-6px}
+#hud>div.hud-left,#hud>div.hud-right {
+ background-image:var(--plate-blue);
+ background-position:center;
+ background-size:100% 100%;
+ background-repeat:no-repeat;
+}
+#hud #score {
+ background-image:var(--plate-red);
+ background-position:center;
+ background-size:100% 100%;
+ background-repeat:no-repeat;
+ font-kerning:normal;
+}
+#pauseButton {
+ background-image:var(--plate-pause);
+ background-size:contain;
+ background-position:center;
+ background-repeat:no-repeat;
+}
+#fighterName{
+ background-image:var(--plate-red);
+ background-size:100% 100%;
+ background-repeat:no-repeat;
+}
+#touchBar button {
+ color:#f2faff!important;
+ font-size:clamp(9px,1.1vw,14px)!important;
+ font-family:'Barlow Condensed',sans-serif;
+ line-height:1;
+ font-weight:900;
+ letter-spacing:.045em;
+ text-shadow:0 2px 4px #000,0 0 5px #20cdff;
+ background-size:100% 100%;
+ background-position:center;
+ background-repeat:no-repeat;
+}
+#touchBar button[data-touch-mode="grip"] {text-shadow:0 1px 4px #000,0 0 5px #ff526c}
+#touchBar button.chosen{filter:brightness(1.23) drop-shadow(0 0 4px #fefefe6b)}
+/* Large panels carry narrow, full-resolution painted header rails rather than
+   stretching an 80-pixel bar to an entire card and exposing smeared pixels. */
+.fight-card,.select-info,.compact-center {
+ background-color:#070f1feb;
+ background-image:url('../assets/ui/panel-neutral.webp');
+ background-size:100% clamp(23px,5vw,48px);
+ background-position:center top;
+ background-repeat:no-repeat;
+ border:0;
+ box-shadow:0 18px 50px #0009, inset 0 -2px 0 #1d9dcc33;
+}
+.roster-card,.roster-card.selected{
+ background-color:#07182ceb;
+ background-image:url('../assets/ui/panel-blue.webp');
+ background-size:100% clamp(24px,3vw,40px);
+ background-position:center bottom;
+ background-repeat:no-repeat;
+ border:0;
+ box-shadow:none;
+}
+.roster-card.selected{
+ outline:2px solid #62d7ff;
+ outline-offset:0;
+ filter:drop-shadow(0 0 8px #23c9fd80);
+}
+.roster-card img{
+ image-rendering:auto;
+ background:linear-gradient(145deg,#0e2238,#171726);
+}
+/* The stats are dynamic player values and must remain sharp at any scale. */
+.meter i{
+ background-image:none;
+ background-color:#23394e;
+ filter:none;
+ border:1px solid #5184a870;
+ border-radius:2px;
+}
+.meter i.on{
+ background-image:none;
+ background-color:var(--accent,#62d7ff);
+ filter:none;
+ box-shadow:0 0 9px color-mix(in srgb,var(--accent,#62d7ff) 50%,transparent);
+}
+.studio-image,.menu-image,.portrait img,.roster-card img,
+#hud>div,#hud #score,#pauseButton,.btn {image-rendering:auto}
+@media(max-width:760px){
+ .menu.menu-hotspots .btn{top:74.4%;height:15.1%}
+ #touchBar button{font-size:10px!important}
+}

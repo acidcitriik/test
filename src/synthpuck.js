@@ -1,5 +1,5 @@
 import {Match,clamp,magnitude} from './physics.js';
-import {SPRITE_URLS} from './synthpuck-sprite-art.js';
+import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
@@ -120,35 +120,29 @@ for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','tr
 for(const type of ['player','puck','ai'])images.sprites[type]=loadImage(SPRITE_URLS[type]);
 // HAL is built into the final stage; the independently painted retina moves at runtime.
 images.halEye=loadImage('./assets/characters/hal-eye.webp');
-// Runtime raster cropping of the approved painted atlas. Never draw vector panels.
-// Frame 1 (0..225): title/menu, frame 2 (225..450): illustrated HUD.
-// We sample unlabelled painted plates for live score / names / stats.
-const uiAtlas=loadImage('./assets/ui/menu-hud.avif');
+// Full-resolution, separately painted art assets. The previous tiny composite atlas
+// was cropped and enlarged at runtime, which introduced blur/pixelation everywhere.
+// Preload the menu and HUD assets so ready means their decoded images are available.
+const uiPaths=[
+ './assets/ui/menu-hd.avif',
+ './assets/ui/panel-blue.webp',
+ './assets/ui/panel-red.webp',
+ './assets/ui/panel-neutral.webp',
+ './assets/ui/pause.webp'
+];
 let uiArtReady=false;
-function installPaintedUi(){
- if(!uiAtlas.complete||!uiAtlas.naturalWidth)return;
- const scale=uiAtlas.naturalWidth/NATIVE.w,offset=uiAtlas.naturalHeight/2;
- function cropRgba([x,y,w,h]){
-  const sx=Math.round(x*scale),sy=Math.round(y*scale+offset);
-  const sw=Math.round(w*scale),sh=Math.round(h*scale);
-  const canvas=document.createElement('canvas');canvas.width=sw;canvas.height=sh;
-  canvas.getContext('2d').drawImage(uiAtlas,sx,sy,sw,sh,0,0,sw,sh);
-  return `url("${canvas.toDataURL('image/png')}")`;
- }
- const art={
-  '--plate-red':[126,711,654,180],
-  '--plate-blue':[858,711,660,180],
-  '--plate-pause':[1275,270,295,280],
-  '--touch-normal':[22,545,392,160],
-  '--touch-rigid':[419,545,395,160],
-  '--touch-soft':[825,545,394,160],
-  '--touch-spin':[1228,545,399,160]
- };
- for(const [name,rect] of Object.entries(art))document.documentElement.style.setProperty(name,cropRgba(rect));
- document.documentElement.dataset.uiArt='loaded';uiArtReady=true;
-}
-uiAtlas.addEventListener('load',installPaintedUi);
-if(uiAtlas.complete&&uiAtlas.naturalWidth)installPaintedUi();
+Promise.all(uiPaths.map(src=>new Promise((resolve,reject)=>{
+ const img=new Image();
+ img.onload=()=>img.decode?.().then(resolve,reject)??resolve();
+ img.onerror=()=>reject(new Error('Missing Synthpuck HD asset: '+src));
+ img.src=src;
+}))).then(()=>{
+ uiArtReady=true;
+ document.documentElement.dataset.uiArt='loaded';
+}).catch(error=>{
+ document.documentElement.dataset.uiArt='failed';
+ console.error(error);
+});
 
 function resize(){
   const cssW=innerWidth,cssH=innerHeight,dpr=Math.min(devicePixelRatio||1,2);
@@ -206,18 +200,15 @@ function projectedRadius(x,z,r){
 }
 // Independent transparent artwork. No source rectangles, so no cropped heads,
 // rims or cut puck edges. Alpha margins are part of each image.
-const spriteArt=Object.freeze({
- player:{inkWidth:274,anchor:.83},
- ai:{inkWidth:246,anchor:.83},
- puck:{inkWidth:271,anchor:.66}
-});
+const spriteArt=SPRITE_ART;
+
 function spriteGeometry(obj,type){
  const p=project(obj.x,obj.z);
  const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
  const {rx}=projectedRadius(obj.x,obj.z,radius);
  const sprite=spriteArt[type],img=images.sprites[type];
- const sourceWidth=img?.naturalWidth || (type==='ai'?281:type==='player'?309:308);
- const sourceHeight=img?.naturalHeight || (type==='player'?224:205);
+ const sourceWidth=img?.naturalWidth || (type==='ai'?672:type==='player'?674:549);
+ const sourceHeight=img?.naturalHeight || (type==='puck'?361:482);
  const width=2*rx*.98*sourceWidth/sprite.inkWidth;
  const height=width*sourceHeight/sourceWidth;
  return {x:p.x-width/2,y:p.y-height*sprite.anchor,width,height};
