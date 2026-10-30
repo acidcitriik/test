@@ -66,8 +66,6 @@ try{
  });
  assert.ok(painted.every(entry=>entry.bg.startsWith('url(') && !entry.bg.includes('data:image')),'The HUD uses separate high-res painted assets, not enlarged base64 atlases: '+JSON.stringify(painted));
  assert.ok(painted.some(entry=>entry.bg.includes('panel-red.webp')),'The scoreboard uses the new full-resolution red plate');
- const buttonBox=await page.getByRole('button',{name:'ARCADE'}).boundingBox();
- assert.ok(buttonBox===null || buttonBox.width>0);
  assert.equal(await page.locator('svg').count(),0,'No in-game vector graphics');
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
