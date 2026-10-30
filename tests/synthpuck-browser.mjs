@@ -47,6 +47,8 @@ try{
  await page.getByRole('button',{name:'LANCER LE DUEL'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing');
+ await page.waitForFunction(()=>Object.values(__synthpuck.snapshot().spriteSizes).length===3 && Object.values(__synthpuck.snapshot().spriteSizes).every(([w,h])=>w>0&&h>0));
+ assert.deepEqual((await page.evaluate(()=>__synthpuck.snapshot().spriteSizes)),{player:[309,224],puck:[308,205],ai:[281,205]},'All three approved transparent sprites are loaded');
  const first=await page.evaluate(()=>__synthpuck.snapshot());
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
@@ -152,25 +154,31 @@ try{
    }
    return {y,segments:found};
   });
-  const sprite=await load('./assets/mamouda/sprites.webp');
-  canvas.width=sprite.width;canvas.height=sprite.height;c.drawImage(sprite,0,0);
-  const s=c.getImageData(0,0,canvas.width,canvas.height).data;
-  const crop=[[6,8,232,137],[258,8,232,137],[10,164,90,60]];
-  const spriteEdges=crop.map(([x,y,w,h])=>{
-   let edge=[0,0,0,0],minX=w,minY=h,maxX=-1,maxY=-1;
-   for(let yy=0;yy<h;yy++)for(let xx=0;xx<w;xx++){
-    if(s[((y+yy)*canvas.width+x+xx)*4+3]<64)continue;
-    minX=Math.min(minX,xx);minY=Math.min(minY,yy);maxX=Math.max(maxX,xx);maxY=Math.max(maxY,yy);
-    if(xx===0)edge[0]++;if(xx===w-1)edge[1]++;if(yy===0)edge[2]++;if(yy===h-1)edge[3]++;
+  // Validate the three NEW approved full transparent sprites rather than the
+  // old Mamouda atlas. Pixel margins prevent cut handles/puck/rims.
+  const urls=(await import('./src/synthpuck-sprite-art.js')).SPRITE_URLS;
+  const spriteEdges=[];
+  for(const type of ['player','puck','ai']){
+   const sprite=await load(urls[type]);
+   canvas.width=sprite.width;canvas.height=sprite.height;c.drawImage(sprite,0,0);
+   const a=c.getImageData(0,0,canvas.width,canvas.height).data;
+   const edge=[0,0,0,0];
+   for(let y=0;y<canvas.height;y++){
+    if(a[(y*canvas.width)*4+3]>16)edge[0]++;
+    if(a[(y*canvas.width+canvas.width-1)*4+3]>16)edge[1]++;
    }
-   return {bounds:[minX,minY,maxX,maxY],edge};
-  });
-  return {rows,sprite:{w:sprite.width,h:sprite.height,spriteEdges}};
+   for(let x=0;x<canvas.width;x++){
+    if(a[x*4+3]>16)edge[2]++;
+    if(a[((canvas.height-1)*canvas.width+x)*4+3]>16)edge[3]++;
+   }
+   spriteEdges.push({type,width:sprite.width,height:sprite.height,edge});
+  }
+  return {rows,spriteEdges};
  });
- assert.equal(artScan.sprite.w,512);
- assert.equal(artScan.sprite.h,350);
- for(const obj of artScan.sprite.spriteEdges){
-  assert.deepEqual(obj.edge,[0,0,0,0],'No atlas sprite touches its crop edges');
+ assert.equal(artScan.spriteEdges.length,3);
+ for(const sprite of artScan.spriteEdges){
+  assert.ok(sprite.width>=280 && sprite.height>=200, sprite.type+' must retain source detail');
+  assert.deepEqual(sprite.edge,[0,0,0,0],sprite.type+' must have transparent safety margins on every side');
  }
 
  assert.deepEqual(errors,[],'No JS exceptions');
