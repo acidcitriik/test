@@ -1,0 +1,23 @@
+name: Temporary MUTE art-workbench
+on:
+  push:
+    branches: [art/mute-hair-repair-20261030]
+  workflow_dispatch:
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Export source assets for pixel-accurate visual QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: mute-source
+          path: |
+            assets/characters/mute.webp
+            assets/stages/mute.webp
+            assets/sprites/paddle-player.webp
+            assets/sprites/paddle-ai.webp
+            assets/sprites/puck.webp
+            assets/ui/panel-blue.webp
+            assets/ui/panel-red.webp
+          if-no-files-found: error
