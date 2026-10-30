@@ -49,3 +49,14 @@ test('character-specific targets stay on the proper half with no teleporting or 
   assert.equal(puck.x,.6);assert.equal(puck.z,1.8);
  }
 });
+// Horizontal puck on the AI half must be actively intercepted, even with vz=0.
+test('AI leads a horizontal puck instead of abandoning the rally',()=>{
+ const cfg=new Match(matchConfiguration(ROSTER[0])).cfg;
+ const brain={phase:'defend',phaseAt:0,lastImpact:-Infinity,possessionHits:0,bankAttempts:0,lastBankAt:-Infinity,bankSide:1,lastPuckOnAIHalf:true};
+ const puck={x:-1.3,z:2.4,vx:2.3,vz:0,spin:0};
+ const ai={x:0,z:3.8,vx:0,vz:0,side:1};
+ const target=chooseCharacterAITarget(puck,ai,{x:0,z:-3.8},cfg,brain,1);
+ assert.equal(brain.phase,'collect');
+ assert.ok(target.z>puck.z && target.z<puck.z+.6,'AI positions on goal-side of sideways puck');
+ assert.ok(target.x>puck.x,'AI leads the sideways puck rather than chasing its present position');
+});
