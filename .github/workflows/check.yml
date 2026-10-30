@@ -47,4 +47,8 @@ jobs:
             mamouda-final-preview.png
             synthpuck-arcade-preview.png
             synthpuck-training-preview.png
+            synthpuck-studio-preview.png
+            synthpuck-title-preview.png
+            synthpuck-character-select-preview.png
+            synthpuck-landscape-preview.png
           if-no-files-found: ignore

@@ -23,13 +23,20 @@ try{
  const splash=await browser.newPage({viewport:{width:1280,height:720}});
  await splash.goto(base,{waitUntil:'domcontentloaded'});
  await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='splash');
- assert.equal(await splash.locator('svg.logo').count(),1);
+ assert.equal(await splash.locator('svg').count(),0,'No vector SVG on splash');
+ assert.equal(await splash.locator('.studio-image').count(),1);
+ await splash.locator('.studio-image').evaluate(img=>img.decode());
+ assert.ok((await splash.locator('.studio-image').evaluate(img=>img.naturalWidth))>=600,'Raster studio image loads');
  await splash.screenshot({path:'synthpuck-studio-preview.png'});
  await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu',{timeout:7000});
  await splash.close();
  await page.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu');
  assert.equal(await page.title(),'SYNTHPUCK — PiperadeGames');
+ await page.waitForFunction(()=>document.documentElement.dataset.uiArt==='loaded');
+ assert.equal(await page.locator('svg').count(),0,'No SVG in the active title screen');
+ const menuBg=await page.locator('.menu-image').evaluate(el=>getComputedStyle(el).backgroundImage);
+ assert.ok(menuBg.includes('menu-hud.avif'),'Title/menu uses raster atlas');
  await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
  assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
@@ -44,8 +51,17 @@ try{
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
  const scoreBox=await page.locator('#score').boundingBox();
- assert.ok(scoreBox.width>150&&scoreBox.height<120,
+ assert.ok(scoreBox.width>105&&scoreBox.height<120,
    `HUD scoreboard must remain on one horizontal row: ${JSON.stringify(scoreBox)}`);
+ const scoreFlow=await page.locator('#score').evaluate(el=>({display:getComputedStyle(el).display,content:el.innerText,spanTop:el.querySelector('span').getBoundingClientRect().top,parentTop:el.getBoundingClientRect().top,parentHeight:el.getBoundingClientRect().height}));
+ assert.equal(scoreFlow.display,'flex','Scoreboard must not inherit grid layout');
+ assert.ok(scoreFlow.spanTop>=scoreFlow.parentTop&&scoreFlow.spanTop<scoreFlow.parentTop+scoreFlow.parentHeight,'Colon stays inside HUD score plate');
+ const painted=await page.evaluate(()=>{
+  const selectors=['#score','.hud-left','.hud-right','#pauseButton','#fighterName'];
+  return selectors.map(selector=>({selector,bg:getComputedStyle(document.querySelector(selector)).backgroundImage}));
+ });
+ assert.ok(painted.every(entry=>entry.bg.startsWith('url(')),'HUD and button panels are raster-painted: '+JSON.stringify(painted));
+ assert.equal(await page.locator('svg').count(),0,'No in-game vector graphics');
  const geometry=await page.evaluate(()=>({left:__synthpuck.project(1,0),right:__synthpuck.project(-1,0),radius:__synthpuck.projectedRadius(0,0,.37)}));
  assert.ok(geometry.left.x<geometry.right.x,'right is negative engine X');
  assert.ok(geometry.radius.rx>20,'paddles must be visible');
@@ -76,6 +92,7 @@ try{
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  assert.equal(await page.locator('.roster-card').count(),7);
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
+ assert.equal(await page.locator('svg').count(),0,'No SVG in character selection');
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
   await page.locator(`[data-character="${id}"]`).click();
   assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
@@ -95,6 +112,7 @@ try{
  await page.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.screenshot({path:'synthpuck-training-preview.png'});
+ assert.equal(await page.locator('svg').count(),0,'No SVG in the training arena');
  // Verify that the complete table is visible on phones and wide screens;
  // the same world-to-stage projection must be used for all eight arenas.
  for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1672,height:941}]){
@@ -103,6 +121,7 @@ try{
    const size=window.__synthpuck.snapshot().viewport;
    return size.width===v.width&&size.height===v.height;
   },viewport);
+  if(viewport.width===844)await page.screenshot({path:'synthpuck-landscape-preview.png'});
   const points=await page.evaluate(()=>[
    __synthpuck.project(-2.9,-5),__synthpuck.project(2.9,-5),
    __synthpuck.project(-2.9,5),__synthpuck.project(2.9,5)
