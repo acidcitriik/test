@@ -201,9 +201,9 @@ function projectedRadius(x,z,r){
 // edges. Size by OPAQUE silhouette width (not the padded crop rectangle).
 // This keeps the two paddles and puck faithful to their moving physics radii.
 const spriteArt=Object.freeze({
- player:{crop:[6,8,232,137],inkWidth:214,anchor:.83},
- ai:{crop:[258,8,232,137],inkWidth:214,anchor:.83},
- puck:{crop:[10,164,90,60],inkWidth:82,anchor:.63}
+ player:{crop:[0,0,250,155],inkWidth:214,anchor:.83},
+ ai:{crop:[250,0,262,155],inkWidth:214,anchor:.83},
+ puck:{crop:[0,155,125,85],inkWidth:82,anchor:.63}
 });
 function spriteGeometry(obj,type){
  const p=project(obj.x,obj.z);
