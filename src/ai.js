@@ -21,6 +21,7 @@ export function createAIBrain() {
   };
 }
 
+const onFinite = Number.isFinite;
 function setPhase(brain, phase, now) {
   if (brain && brain.phase !== phase) {
     brain.phase = phase; brain.phaseAt = now;
@@ -48,6 +49,8 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   const limitX = cfg.width / 2 - cfg.puckRadius;
   const speed = speedOf(puck);
   const horizontal = Math.abs(puck.vz) < Math.max(.48, Math.abs(puck.vx) * .32);
+  // Sideways rallies require a deliberate interception, not endless tracking.
+  const lateralRally = onFinite(puck.z) && puck.z > .14 && Math.abs(puck.vz) < .10 && Math.abs(puck.vx) > .30;
   const slow = speed < 1.15;
   const onOwnHalf = puck.z > .14;
   const outgoing = puck.vz < -1.5 && !horizontal && !slow;
@@ -81,7 +84,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   const activeRear = rearPhases.includes(brain?.phase);
   const behindPaddle = onOwnHalf && puck.z > ai.z + .42 && puck.z > 2.0;
   if (brain && onOwnHalf && puck.z > 1.95 &&
-      (slow || horizontal || activeRear) && (behindPaddle || activeRear)) {
+      (slow || (horizontal && Math.abs(puck.vx)<.30) || activeRear) && (behindPaddle || activeRear)) {
     // No rear band exists across the goal opening. Add a safety margin for
     // the puck radius and contact-position uncertainty.
     const rearSafeX = cfg.goalWidth/2 + cfg.puckRadius + .27;
@@ -130,7 +133,7 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   // safely from behind: the motor cannot cross the goal line. Approach from
   // its SIDE first, then sweep laterally. This also covers the corner cases
   // where a completely motionless puck would otherwise remain forever.
-  if (onOwnHalf && deep && (slow || horizontal) && brain) {
+  if (onOwnHalf && deep && (slow || (horizontal && Math.abs(puck.vx)<.30)) && brain) {
     if (brain.phase !== 'deepSetup' && brain.phase !== 'deepSweep') {
       brain.bankSide = puck.x >= 0 ? -1 : 1; // work from the spacious side
       setPhase(brain, 'deepSetup', now);
@@ -200,6 +203,18 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
     return {
       x: clampAI(puck.x + side * .90, minX, maxX),
       z: clampAI(puck.z + .69, minZ, maxZ)
+    };
+  }
+
+  // Intercept a horizontal puck on our half by leading its reflected path.
+  // Stay on the goal-side of the puck so the real collision sends it forward.
+  // This bypasses rear-wall planning that could endlessly chase a moving puck.
+  if (lateralRally && !deep) {
+    setPhase(brain, 'collect', now);
+    const travelTime = clampAI(Math.hypot(puck.x-ai.x,puck.z-ai.z)/Math.max(1,cfg.aiSpeed)+.16,.20,.85);
+    return {
+      x: clampAI(predictRailX(puck,travelTime,cfg),minX,maxX),
+      z: clampAI(puck.z+.37,minZ,maxZ)
     };
   }
 
