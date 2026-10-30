@@ -26,7 +26,8 @@ try{
  assert.equal(await splash.locator('svg').count(),0,'No vector SVG on splash');
  assert.equal(await splash.locator('.studio-image').count(),1);
  await splash.locator('.studio-image').evaluate(img=>img.decode());
- assert.ok((await splash.locator('.studio-image').evaluate(img=>img.naturalWidth))>=600,'Raster studio image loads');
+ assert.ok((await splash.locator('.studio-image').evaluate(img=>img.naturalWidth))>=1600,'The original single-pepper studio logo has a full HD-resolution raster');
+ assert.ok((await splash.locator('.studio-image').getAttribute('src')).includes('studio-splash-hd.avif'),'Splash must use the improved version of the original logo');
  await splash.screenshot({path:'synthpuck-studio-preview.png'});
  await splash.waitForFunction(()=>window.__synthpuck?.snapshot().screen==='menu',{timeout:7000});
  await splash.close();

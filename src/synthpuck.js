@@ -27,7 +27,7 @@ const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp" alt
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
 const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=name!=='playing';}
-function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
+function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
@@ -124,6 +124,7 @@ images.halEye=loadImage('./assets/characters/hal-eye.webp');
 // was cropped and enlarged at runtime, which introduced blur/pixelation everywhere.
 // Preload the menu and HUD assets so ready means their decoded images are available.
 const uiPaths=[
+ './assets/ui/studio-splash-hd.avif',
  './assets/ui/menu-hd.avif',
  './assets/ui/panel-blue.webp',
  './assets/ui/panel-red.webp',

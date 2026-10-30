@@ -52,3 +52,5 @@ Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveu
 - Le niveau `assets/stages/2502.webp` (RED CORE) conserve **l'ouverture noire sans œil dessiné** : l'œil est animé à partir du palet par `src/hal-eye.js`.
 - La calibration commune **1672 × 941 / Y 390, 544, 770** reste strictement inchangée.
 - Aucun SVG ni rectangle vectoriel n’est ajouté à l’illustration du menu ou aux objets mobiles.
+
+- `assets/ui/studio-splash-hd.avif` : version agrandie et légèrement accentuée du **même logo PiperadeGames approuvé, avec un seul piment** ; aucun changement de composition ni ajout d'illustration. Le fichier source historique 640 × 360 est conservé comme archive.
