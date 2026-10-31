@@ -124,8 +124,29 @@ try{
 
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
  await page.keyboard.press('Escape');
-  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause');
+ assert.equal(await page.locator('[data-pause-level]').count(),7,'Pause offers all seven Arcade stages');
+ assert.equal(await page.locator('[data-pause-level="0"]').getAttribute('aria-current'),'step','Current stage is highlighted');
+ await page.screenshot({path:'synthpuck-pause-levels-preview.png'});
+ await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mamouda');
+ const jumped=await page.evaluate(()=>__synthpuck.snapshot());
+ assert.equal(jumped.mode,'arcade');
+ assert.equal(jumped.level,3);
+ assert.equal(jumped.opponent,'mamouda');
+ assert.deepEqual(jumped.score,[0,0],'Skipping to a stage starts a fresh duel');
+ assert.equal(jumped.state,'playing');
+ assert.equal(await page.locator('#hudLevel').innerText(),'04 / 07');
+ assert.match(await page.locator('#hudStage').innerText(),/MAMOUDA/);
+ await page.keyboard.press('Escape');
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+ assert.equal(await page.locator('[data-pause-level="3"]').getAttribute('aria-current'),'step');
+ await page.getByRole('button',{name:'Niveau 01 : MUTE'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mute');
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).level,0,'Stage selection works in both directions');
+ await page.keyboard.press('Escape');
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
  assert.equal(await page.locator('#fighterName').isHidden(),true,'No character name over menus');
  await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
@@ -146,6 +167,7 @@ try{
   assert.match(await page.locator('#hudStage').innerText(),/^GRID 00 · /);
   await page.keyboard.press('Escape');
   await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+  assert.equal(await page.locator('[data-pause-level]').count(),0,'Training pause does not jump into Arcade');
   await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
   await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
  }
