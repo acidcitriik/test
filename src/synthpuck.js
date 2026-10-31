@@ -50,7 +50,12 @@ function showTrainingSelect(){
 function showPause(reason='DUEL EN PAUSE'){
   if(!match)return;
   active=false;pausedReason=reason;setScreen('pause',true);
-  panel.innerHTML=`<div class="compact-center"><p class="eyebrow">SYNTHPUCK</p><h2>${reason}</h2><p class="sub">${opponent.name} · ${mode==='arcade'?'ARCADE':'ENTRAÎNEMENT'}</p>${btn('REPRENDRE','resume',true)}${btn('RECOMMENCER','retry')}${btn('RETOUR AU MENU','menu')}</div>`;
+  // This is a debug-friendly Arcade shortcut, not a campaign unlock system:
+  // choosing a stage starts a fresh match and resets its score.
+  const levels=mode==='arcade'
+    ? `<div class="pause-levels"><p class="eyebrow">CHOISIR UN NIVEAU · NOUVEAU DUEL</p><div class="pause-level-grid" role="group" aria-label="Niveaux Arcade">${ROSTER.map((fighter,index)=>`<button type="button" class="pause-level ${index===level?'current':''}" data-pause-level="${index}" aria-label="Niveau ${String(index+1).padStart(2,'0')} : ${fighter.name}" ${index===level?'aria-current="step"':''}><span>${String(index+1).padStart(2,'0')}</span><strong>${fighter.name}</strong></button>`).join('')}</div></div>`
+    : ``;
+  panel.innerHTML=`<div class="compact-center pause-center"><p class="eyebrow">SYNTHPUCK</p><h2>${reason}</h2><p class="sub">${opponent.name} · ${mode==='arcade'?'ARCADE':'ENTRAÎNEMENT'}</p>${levels}<div class="pause-actions">${btn('REPRENDRE','resume',true)}${btn('RECOMMENCER','retry')}${btn('RETOUR AU MENU','menu')}</div></div>`;
   document.exitPointerLock?.();
 }
 function showPoint(){
@@ -110,6 +115,17 @@ function buttonAction(action){
 }
 panel.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button || button.disabled)return;
+  if(button.dataset.pauseLevel!==undefined){
+    // Only a paused Arcade match may jump to another stage.
+    const index=Number(button.dataset.pauseLevel);
+    if(screen!=='pause'||mode!=='arcade'||!Number.isInteger(index)||index<0||index>=ROSTER.length)return;
+    level=index;
+    opponent=ROSTER[level];
+    selected=opponent.id;
+    touchId=null;
+    beginMatch();
+    return;
+  }
   if(button.dataset.character){selected=button.dataset.character;showTrainingSelect();return;}
   if(button.dataset.action)buttonAction(button.dataset.action);
 });
