@@ -257,6 +257,34 @@ function drawHalEye(dt){
   ctx.drawImage(eye,layout.x+halGaze.x*scale-size/2,layout.y+halGaze.y*scale-size/2,size,size);
   ctx.restore();
 }
+// Visual debug only: project the actual invisible physics walls, without
+// creating/changing collision geometry or repainting the illustrated arena.
+function drawPhysicalTableWalls(){
+  const {width,length,goalWidth}=match.cfg;
+  const halfW=width/2,halfL=length/2,halfGoal=goalWidth/2;
+  ctx.save();
+  ctx.strokeStyle='#B4FF88';
+  ctx.lineWidth=Math.max(2,4*layout.scale);
+  ctx.lineCap='round';
+  ctx.lineJoin='round';
+  const wall=(x0,z0,x1,z1)=>{
+    ctx.beginPath();
+    for(let i=0;i<=24;i++){
+      const t=i/24,p=project(x0+(x1-x0)*t,z0+(z1-z0)*t);
+      if(i===0)ctx.moveTo(p.x,p.y);
+      else ctx.lineTo(p.x,p.y);
+    }
+    ctx.stroke();
+  };
+  // Lateral walls, then front/rear wall segments: retain the real goal gaps.
+  wall(-halfW,-halfL,-halfW,halfL);
+  wall(halfW,-halfL,halfW,halfL);
+  for(const z of [-halfL,halfL]){
+    wall(-halfW,z,-halfGoal,z);
+    wall(halfGoal,z,halfW,z);
+  }
+  ctx.restore();
+}
 function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)return;
   drawHalEye(dt);
   // The far opponent's paddle is behind the centre puck, which is behind the player's paddle.
@@ -264,6 +292,7 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
     {...(active?match.target:match.player),type:'player'}];
   actors.sort((a,b)=>b.z-a.z);
   for(const p of actors)drawObject(p,p.type);
+  drawPhysicalTableWalls();
 }
 function updateHud(){if(!match)return;
   $('score').innerHTML=`${match.scores[0]} <span>:</span> ${match.scores[1]}`;
