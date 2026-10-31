@@ -7,7 +7,7 @@ import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
 const NATIVE={w:1672,h:941};
 // Stage-normalised portrait height. Every real opponent stays behind the far rail.
-const OPPONENT_HEIGHT_NATIVE=184;
+const OPPONENT_HEIGHT_NATIVE=216;
 const $=id=>document.getElementById(id);
 const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
@@ -175,13 +175,13 @@ function drawOpponent(){
   if(currentStage===HAL_STAGE_ID)return;
   const image=images.characters[opponent.id];if(!image?.complete||!image.naturalWidth)return;
   // The character sits behind the visible far rail (same fixed geometry as the puck).
-  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+385*layout.scale);bg.clip();
-  // Smaller at the calibrated far rail, free of the artificial neon shadow
-  // that used to make every hair edge look like a failed alpha cut-out.
+  bg.save();bg.beginPath();bg.rect(0,0,layout.cssW,layout.y+390*layout.scale);bg.clip();
+  // Slightly larger portraits, sunk behind the far-rail lip: the cropped
+  // torso stays hidden while the head/shoulders remain clear of the table.
   const height=OPPONENT_HEIGHT_NATIVE*layout.scale;
   const width=image.naturalWidth/image.naturalHeight*height;
   const x=layout.x+NATIVE.w*layout.scale/2-width/2;
-  const y=layout.y+(385-OPPONENT_HEIGHT_NATIVE)*layout.scale;
+  const y=layout.y+(396-OPPONENT_HEIGHT_NATIVE)*layout.scale;
   bg.imageSmoothingEnabled=true;
   bg.imageSmoothingQuality='high';
   bg.shadowBlur=0;
@@ -190,20 +190,20 @@ function drawOpponent(){
 }
 // Common 1672 x 941 playing surface measured on the ORIGINAL training artwork.
 // Do not edit any image in assets/stages: calibrate only moving object projection.
-// Far rail Y≈385, centre line Y≈545, near rail Y≈770. Old 351..798 mapped
-// the moving collision field beyond both visible rails (the "too deep" table).
+// The green physics boundary revealed the true inner painted rail positions:
+// far Y≈390, centre Y≈554, near Y≈816. This is projection-only calibration.
 export const TABLE_CALIBRATION=Object.freeze({
  far:{y:390,left:680,right:992},
- center:{y:544,left:490,right:1186},
- near:{y:770,left:225,right:1450}
+ center:{y:554,left:475,right:1201},
+ near:{y:816,left:200,right:1475}
 });
 function project(x,z){
   // Same physics, camera-right = -world X; clamp world coordinates for graphics.
   const u=clamp(.5-x/match.cfg.width,0,1);
   const v=clamp(.5-z/match.cfg.length,0,1);
-  const yy=390+236*v+144*v*v;
-  const left=680-305*v-150*v*v;
-  const right=992+318*v+140*v*v;
+  const yy=390+230*v+196*v*v;
+  const left=680-340*v-140*v*v;
+  const right=992+353*v+130*v*v;
   return {x:layout.x+(left+(right-left)*u)*layout.scale,y:layout.y+yy*layout.scale};
 }
 function projectedRadius(x,z,r){
