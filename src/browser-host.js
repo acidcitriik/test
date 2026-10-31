@@ -1,11 +1,12 @@
+import {iceConfiguration} from './ice-config.js';
 import {ConnectionDebug} from './connection-debug.js';
 import './vendor/peerjs.min.js';
 import {Match,clamp} from './physics.js';
 
 // Socket-shaped adapter: game simulation lives exclusively in the host browser.
 export class BrowserHost {
-  constructor(){this.debug=new ConnectionDebug();this.debug.log('Signalisation','Connexion PeerJS Cloud via HTTPS/WSS (port distant 443). STUN actif ; aucun TURN configuré.');this.readyState=0;this.bufferedAmount=0;this.closed=false;this.timer=null;
-    this.peer=new globalThis.Peer(undefined,{debug:0});
+  constructor(){this.debug=new ConnectionDebug();this.debug.log('Signalisation','Connexion PeerJS Cloud via HTTPS/WSS (port distant 443). STUN Cloudflare : 3478/UDP ; Google : 19302/UDP. Relais TURN PeerJS : 3478, disponibilité à vérifier.');this.readyState=0;this.bufferedAmount=0;this.closed=false;this.timer=null;
+    this.peer=new globalThis.Peer(undefined,{debug:0,config:iceConfiguration()});
     this.timeout=setTimeout(()=>this.fail('Connexion impossible. Réessaie ; certains réseaux nécessitent un relais TURN.'),25000);
     this.peer.on('open',()=>{if(this.closed)return;this.debug.log('Signalisation','Inscription réussie ; identifiant obtenu.');this.readyState=1;this.onopen?.();});
     this.peer.on('error',e=>{this.debug.log('Erreur PeerJS',{type:e.type,message:e.message});this.fail(e.type==='peer-unavailable'?'Partie introuvable. Vérifie le code.':'Connexion impossible. Vérifie Internet ou essaie un autre réseau.');});

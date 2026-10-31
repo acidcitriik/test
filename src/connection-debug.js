@@ -5,8 +5,8 @@ export class ConnectionDebug {
   }
   log(stage,data=''){const line=`+${((performance.now()-this.started)/1000).toFixed(2)}s ${stage} ${typeof data==='string'?data:JSON.stringify(data)}`;this.lines.push(line);if(this.lines.length>300)this.lines.shift();this.onchange?.(this.report());}
   report(){return ['SYNTHPUCK — diagnostic connexion',new Date().toISOString(),...this.lines].join('\n');}
-  candidate(c,direction){if(!c)return;const key=[direction,c.type||c.candidateType,c.protocol,c.port,c.address||c.ip].join('/');if(this.seen.has(key))return;this.seen.add(key);this.log('Candidat '+direction,{type:c.type||c.candidateType,protocol:c.protocol,port:c.port,tcpType:c.tcpType,relayProtocol:c.relayProtocol});}
-  watch(connection){this.poll=setInterval(()=>{const pc=connection.peerConnection;if(pc&&!this.pc){this.pc=pc;
+  candidate(c,direction){if(!c)return;const key=[direction,c.candidateType||c.type,c.protocol,c.port,c.address||c.ip].join('/');if(this.seen.has(key))return;this.seen.add(key);if(c.candidateType||c.type)this.candidateTypes??=new Set();this.candidateTypes?.add(direction+':'+(c.candidateType||c.type));this.log('Candidat '+direction,{type:c.type||c.candidateType,protocol:c.protocol,port:c.port,tcpType:c.tcpType,relayProtocol:c.relayProtocol});}
+  watch(connection){this.poll=setInterval(()=>{const pc=connection.peerConnection;if(pc&&!this.pc){this.pc=pc;this.log('Serveurs ICE actifs',pc.getConfiguration().iceServers.map(s=>s.urls));
       for(const event of ['connectionstatechange','iceconnectionstatechange','icegatheringstatechange','signalingstatechange'])pc.addEventListener(event,()=>{if(!this.stopped)this.states();});
       pc.addEventListener('icecandidate',e=>{if(!this.stopped){if(e.candidate)this.candidate(e.candidate,'local');else this.log('ICE','Collecte terminée');}});
       pc.addEventListener('icecandidateerror',e=>{if(!this.stopped)this.log('Erreur STUN/TURN',{code:e.errorCode,url:e.url?.replace(/\/\/.*@/,'//'),message:e.errorText});});this.states();
@@ -24,10 +24,10 @@ export class ConnectionDebug {
       if(s.type==='data-channel')this.log('Canal données',{state:s.state,sent:s.messagesSent,received:s.messagesReceived});
     }
   }catch(e){this.log('Statistiques indisponibles',e.name);}finally{this.busy=false;}}
-  diagnosis(){const state=this.pc?.iceConnectionState;
+  diagnosis(){this.log('Candidats observés',[...(this.candidateTypes||[])]);const localPublic=[...(this.candidateTypes||[])].some(t=>t.startsWith('local')&&(t.endsWith(':srflx')||t.endsWith(':relay')));if(this.pc&&!localPublic)this.log('Découverte réseau','Aucun candidat public ou relais local observé : vérifier les erreurs STUN/TURN. Une erreur 701 isolée ne suffit pas à conclure à un blocage DNS ou de port.');const state=this.pc?.iceConnectionState;
     if(!this.pc)this.log('Bilan','Aucune connexion WebRTC créée : vérifier la signalisation, le code et la disponibilité de l’hôte.');
     else if(['connected','completed'].includes(state))this.log('Bilan','ICE connecté. Vérifier l’ouverture du canal de données et les événements applicatifs.');
-    else this.log('Bilan','Aucun chemin WebRTC établi. Causes possibles : réseau filtré, NAT, échange de candidats incomplet ou hôte indisponible. Aucun relais TURN configuré ; un relais peut être nécessaire.');
+    else this.log('Bilan','Aucun chemin WebRTC établi. Causes possibles : réseau filtré, NAT, échange de candidats incomplet ou hôte indisponible. Les relais TURN PeerJS sont configurés, mais leur accessibilité n’est pas garantie.');
   }
   stop(){this.stopped=true;clearInterval(this.poll);clearInterval(this.stats);}
 }
