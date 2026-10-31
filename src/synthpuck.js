@@ -7,7 +7,7 @@ import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
 const NATIVE={w:1672,h:941};
 // Stage-normalised portrait height. Every real opponent stays behind the far rail.
-const OPPONENT_HEIGHT_NATIVE=216;
+const OPPONENT_HEIGHT_NATIVE=240;
 const $=id=>document.getElementById(id);
 const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
@@ -25,7 +25,7 @@ const isTouch=()=>navigator.maxTouchPoints>0 || matchMedia('(pointer:coarse)').m
 
 const statBar=(value,accent)=>`<div class="meter" style="--accent:${accent}">${Array.from({length:5},(_,i)=>`<i class="${i<value?'on':''}"></i>`).join('')}</div>`;
 const statsHtml=c=>`<div class="stats" style="--accent:${c.accent}">${STAT_NAMES.map((title,i)=>`<div class="stat-line"><label>${title}</label>${statBar(c.stats[i],c.accent)}</div>`).join('')}</div>`;
-const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp" alt="Portrait de ${c.name}"/>`;
+const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp?v=fighters-hd-20261031" alt="Portrait de ${c.name}"/>`;
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
 const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
@@ -117,7 +117,7 @@ $('pauseButton').addEventListener('click',()=>{if(active)showPause();});
 function selectTouchMode(val){inputMode=val;if(match){match.setButton('left',val==='rigid'||val==='grip');match.setButton('right',val==='soft'||val==='grip');}document.querySelectorAll('[data-touch-mode]').forEach(b=>b.classList.toggle('chosen',b.dataset.touchMode===val));}
 touchBar.addEventListener('click',e=>{const b=e.target.closest('[data-touch-mode]');if(b)selectTouchMode(b.dataset.touchMode);});
 function loadImage(src){const img=new Image();img.decoding='async';img.addEventListener('load',()=>{frame.stageReady=false;drawBackdrop();});img.src=src;return img;}
-for(const p of ROSTER)images.characters[p.id]=loadImage(`./assets/characters/${p.id}.webp`);
+for(const p of ROSTER)images.characters[p.id]=loadImage(`./assets/characters/${p.id}.webp?v=fighters-hd-20261031`);
 for(const name of ['mamouda','mute','chonk','simous','diamond','stal','2502','training']) images.stages[name]=loadImage(`./assets/stages/${name}.webp`);
 for(const type of ['player','puck','ai'])images.sprites[type]=loadImage(SPRITE_URLS[type]);
 // HAL is built into the final stage; the independently painted retina moves at runtime.
