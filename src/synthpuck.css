@@ -274,3 +274,35 @@
  #hud strong{font-size:9px}
  #hud #score{padding:0 2px;font-size:25px}
 }
+
+/* Pause stage switcher: visible with the normal painted HUD, with compact
+   keyboard/touch targets and scrolling on short landscape screens. */
+.compact-center.pause-center{
+  width:min(660px,96vw);
+  max-height:calc(100dvh - 24px);
+  overflow-y:auto;
+  gap:clamp(8px,1.2vh,14px);
+  padding:clamp(14px,2vw,26px);
+}
+.pause-center h2{font-size:clamp(28px,4.2vw,54px)}
+.pause-levels{display:grid;gap:9px}
+.pause-levels .eyebrow{letter-spacing:.12em;font-size:clamp(11px,1.4vw,14px)}
+.pause-level-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.pause-level{
+  display:grid;align-content:center;justify-items:center;gap:2px;
+  min-height:57px;padding:7px 4px;
+  color:#dff7ff;background:#10283de8;border:1px solid #517c9c;
+  border-radius:3px;font-family:'Barlow Condensed',sans-serif;
+}
+.pause-level span{color:#76d9ef;font-size:12px;font-weight:800;letter-spacing:.12em}
+.pause-level strong{font-size:clamp(14px,2vw,19px);font-weight:900;letter-spacing:.06em}
+.pause-level:hover,.pause-level:focus-visible{border-color:#adf6ff;background:#1a4864}
+.pause-level.current{border-color:#ff8296;background:#4b2434;box-shadow:inset 0 0 0 1px #ff829670}
+.pause-level.current span{color:#ffb8c3}
+.pause-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.pause-actions .btn{min-height:46px;padding:8px 12px;font-size:clamp(16px,2vw,23px)}
+.pause-actions .btn:last-child{grid-column:1/-1}
+@media(max-width:430px){
+  .pause-level-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .pause-level{min-height:51px}
+}
