@@ -4,7 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/*.test.mjs",
-    "test:browser": "node tests/browser-smoke.mjs"
+    "test": "node tests/run.mjs",
+    "test:browser": "node tests/browser-smoke.mjs",
+    "start": "node server.mjs",
+    "test:network": "node tests/multiplayer-network.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "playwright": "^1.64.1"
   }
 }

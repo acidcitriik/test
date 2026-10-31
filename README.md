@@ -62,3 +62,20 @@ Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveu
 - Adversaires réduits de 260 à 184 px dans le repère natif, ancrés derrière le rail éloigné à Y 385.
 - Score et plaques HUD ancrés à la zone de la scène 1672 × 941 (et non aux bandes noires du viewport), libellés intégrés dans les panneaux, nom d’adversaire redondant masqué.
 - Vérifications visuelles automatisées à 1672 × 941 et 1780 × 800, plus six captures individuelles des adversaires.
+
+## Multijoueur 1v1
+
+Installer Node.js puis lancer dans le dossier du jeu :
+
+```sh
+npm install
+npm start
+```
+
+Ouvrir http://localhost:3000, puis MULTIJOUEUR et CRÉER UNE PARTIE. Communiquer le code à six chiffres. Le second joueur ouvre http://ADRESSE_IP_HOTE:3000, puis MULTIJOUEUR, saisit le code et choisit REJOINDRE. Sur le même ordinateur, deux fenêtres suffisent.
+
+Les deux joueurs utilisent le même serveur. Pour Internet, utiliser un réseau privé virtuel entre les deux ordinateurs ou configurer une redirection du port TCP 3000 et le pare-feu. Le code ne traverse pas à lui seul les box. Le serveur écoute sur toutes les interfaces. Pour ce prototype privé, les communications HTTP/WS ne sont pas chiffrées : utiliser le réseau privé pour tester à distance. Une page HTTPS exige un serveur WSS.
+
+Le serveur calcule la physique à pas fixe de 120 Hz et diffuse jusqu’à 60 états par seconde. Chaque joueur voit sa raquette en bas. Premier à 7 ; service automatique après 1,5 seconde suivant un but. Pas de pause réseau ; quitter ferme la partie. Le serveur doit rester actif. Cette version est destinée aux tests entre amis : pas de reconnexion, d’authentification ni de compensation avancée de latence.
+
+Vérification : npm test ; avec le serveur actif, npm run test:network.
