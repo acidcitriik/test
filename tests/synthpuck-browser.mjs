@@ -55,7 +55,23 @@ try{
  const first=await page.evaluate(()=>__synthpuck.snapshot());
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
- assert.equal(first.opponentHeightNative,216,'The opponent has more presence and is seated behind the far rail');
+ assert.equal(first.opponentHeightNative,240,'Full-resolution opponents have stage-calibrated presence behind the far rail');
+ const hdPortraits=await page.evaluate(async()=>{
+  const ids=['mute','chonk','simous','mamouda','diamond','stal'];
+  return Promise.all(ids.map(id=>new Promise((resolve,reject)=>{
+   const img=new Image();
+   img.onload=()=>{
+    const can=document.createElement('canvas');can.width=1;can.height=1;
+    const brush=can.getContext('2d');brush.drawImage(img,0,0);
+    resolve({id,width:img.naturalWidth,height:img.naturalHeight,
+      transparentCorner:brush.getImageData(0,0,1,1).data[3]===0});
+   };
+   img.onerror=reject;
+   img.src='./assets/characters/'+id+'.webp?v=fighters-hd-20261031';
+  })));
+ });
+ assert.ok(hdPortraits.every(p=>p.width===1086 && p.height===1448 && p.transparentCorner),
+  'Six newly approved 1086x1448 HD portraits must be genuinely transparent: '+JSON.stringify(hdPortraits));
  assert.equal(await page.locator('#fighterName').isHidden(),true,'Do not stack a redundant fighter name below the score');
  const hudPlacement=await page.evaluate(()=>{
    const hud=document.querySelector('#hud').getBoundingClientRect();
