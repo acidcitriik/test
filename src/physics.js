@@ -206,8 +206,10 @@ export class Match {
     // A player command has zero artificial following delay. Sweep between
     // old and new positions so the disk cannot teleport THROUGH the puck.
     const direct = prepareDirectMove(this.player, this.target, dt, cfg);
+    const remote = this.remoteTarget ? prepareDirectMove(
+      {x:-this.ai.x,z:-this.ai.z}, this.remoteTarget, dt, cfg) : null;
     const maxMovement = Math.max(magnitude(puck.vx,puck.vz)*dt,
-      cfg.aiSpeed*dt, direct.distance);
+      cfg.aiSpeed*dt, direct.distance, remote?.distance ?? 0);
     const steps = clamp(Math.ceil(maxMovement / (cfg.puckRadius * .30)), 1, 128);
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
@@ -215,12 +217,13 @@ export class Match {
       const aiTarget = this.awaitingServe && this.server === 1
         ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
         : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
-      moveToward(this.ai, aiTarget, step, cfg, true);
+      if(remote){const p={};applyDirectMove(p,remote,(k+1)/steps);Object.assign(this.ai,{x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});}
+      else moveToward(this.ai, aiTarget, step, cfg, true);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
       for (const [paddle, label, mode] of [
         [this.player, 'player', this.impactMode()],
-        [this.ai, 'ai', 'normal']
+        [this.ai, 'ai', this.remoteMode ?? 'normal']
       ]) {
         if (collidePaddle(puck, paddle, cfg, mode)) {
           if (this.awaitingServe) {

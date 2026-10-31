@@ -15,6 +15,7 @@ const ctx=arena.getContext('2d');
 const hud=$('hud'),touchBar=$('touchBar');
 const images={stages:{},characters:{},sprites:{},halEye:null};
 let halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};
+let network=null, networkSlot=0, networkTimer=null;
 let mode='arcade',level=0,selected='mute',opponent=ROSTER[0];
 let currentStage='mamouda',screen='splash',match=null,active=false;
 let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
@@ -31,9 +32,10 @@ const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
+  stopNetwork();
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
-  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}<button class="btn" disabled aria-disabled="true">OPTIONS</button><button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
+  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('MULTIJOUEUR','multi')}<button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
@@ -48,6 +50,9 @@ function showTrainingSelect(){
   panel.innerHTML=`<div class="page"><header class="page-head"><div><p class="eyebrow">GRID 00 / SALLE D’ENTRAÎNEMENT</p><h2>CHOISIS TON ADVERSAIRE</h2></div>${btn('← MENU','menu')}</header><div class="roster" role="group" aria-label="Sélection des personnages">${ROSTER.map(p=>`<button data-character="${p.id}" type="button" class="roster-card ${p.id===c.id?'selected':''}" aria-label="Sélectionner ${p.name}" aria-pressed="${p.id===c.id}">${avatar(p)}<strong>${p.name}</strong></button>`).join('')}</div><div class="select-bottom"><div class="select-info" style="--accent:${c.accent}"><p class="eyebrow">${c.epithet}</p><h3>${c.name}</h3><p class="sub">${c.bio}</p>${statsHtml(c)}</div><div class="select-actions"><p class="sub">Joue contre le profil original de ${c.name} dans l’arène neutre GRID 00. Aucun résultat n’affecte l’Arcade.</p>${btn('COMMENCER L’ENTRAÎNEMENT','play',true)}</div></div></div>`;
 }
 function showPause(reason='DUEL EN PAUSE'){
+  if(mode==='multi'){
+    active=false;setScreen('pause',true);panel.innerHTML=`<div class="compact-center"><h2>PARTIE EN COURS</h2><p class="sub">Le match continue pendant ce menu.</p>${btn('REPRENDRE','resume',true)}${btn('QUITTER LA PARTIE','menu')}</div>`;document.exitPointerLock?.();return;
+  }
   if(!match)return;
   active=false;pausedReason=reason;setScreen('pause',true);
   // This is a debug-friendly Arcade shortcut, not a campaign unlock system:
@@ -102,7 +107,9 @@ function resume(){
   }
 }
 function buttonAction(action){
-  if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
+  if(action==='multi'){stopNetwork();showLobby();}
+  else if(action==='host'||action==='join'){connectMultiplayer(action);}
+  else if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
   else if(action==='arcade'){level=0;mode='arcade';showArcadeIntro();}
   else if(action==='training'){mode='training';showTrainingSelect();}
   else if(action==='play'){beginMatch();}
@@ -310,6 +317,43 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
   for(const p of actors)drawObject(p,p.type);
   drawPhysicalTableWalls();
 }
+function stopNetwork(){
+  clearInterval(networkTimer);networkTimer=null;
+  if(network){network.onclose=null;network.close();network=null;}
+}
+function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
+  active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
+  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><label>Adresse du serveur <input id="serverAddress" placeholder="ws://192.168.1.10:3000" /></label><p class="sub">Les deux joueurs doivent utiliser le même serveur.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" inputmode="numeric" maxlength="6" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
+  $('lobbyStatus').textContent=message;
+  $('serverAddress').value=location.protocol==='https:'?'wss://'+location.host:'ws://'+location.host;
+}
+function connectMultiplayer(action){
+  const address=$('serverAddress').value.trim(),code=$('roomCode').value.trim();
+  if(action==='join'&&!/^\d{6}$/.test(code)){$('lobbyStatus').textContent='Saisis un code à six chiffres.';return;}
+  stopNetwork();let ws;
+  try{ws=new WebSocket(address);}catch{showLobby('Adresse du serveur invalide.');return;}network=ws;
+  $('lobbyStatus').textContent='Connexion…';
+  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Serveur inaccessible. Vérifie son adresse et le pare-feu.');}},10000);
+  ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};
+  ws.onclose=()=>{if(network!==ws)return;stopNetwork();showLobby('Connexion interrompue. Recrée ou rejoins une partie.');};
+  ws.onerror=()=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Connexion impossible : vérifie le serveur et son adresse.';};
+  ws.onmessage=e=>{if(network!==ws)return;const d=JSON.parse(e.data);
+    if(d.type==='lobby'){$('lobbyStatus').textContent='Code : '+d.code+' — En attente du deuxième joueur…';}
+    if(d.type==='error'){stopNetwork();showLobby(d.message);}
+    if(d.type==='left'){stopNetwork();showLobby('L’autre joueur a quitté la partie.');}
+    if(d.type==='start'){
+      networkSlot=d.slot;mode='multi';match=new Match();currentStage='training';setBackground('training',false);
+      hud.hidden=false;touchBar.hidden=!isTouch();$('hudMode').textContent='MULTIJOUEUR';$('hudStage').textContent='DUEL 1V1';$('hudLevel').textContent=networkSlot?'JOUEUR 2':'JOUEUR 1';resume();
+      networkTimer=setInterval(()=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<4096)ws.send(JSON.stringify({type:'input',...match.target,left:match.input.left,right:match.input.right}));},1000/60);
+    }
+    if(d.type==='state'&&match){
+      const flip=p=>({...p,x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});
+      Object.assign(match.player,networkSlot?flip(d.ai):d.player);Object.assign(match.ai,networkSlot?flip(d.player):d.ai);Object.assign(match.puck,networkSlot?flip(d.puck):d.puck);
+      match.scores=networkSlot?[...d.scores].reverse():d.scores;match.state=d.state;match.server=networkSlot?-d.server:d.server;match.awaitingServe=d.awaitingServe;
+      if(d.state==='over'){active=false;clearInterval(networkTimer);setScreen('result',true);panel.innerHTML=`<div class="compact-center"><h2>${match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE'}</h2><p>${match.scores.join(' : ')}</p>${btn('RETOUR AU LOBBY','multi',true)}${btn('MENU','menu')}</div>`;document.exitPointerLock?.();}
+    }
+  };
+}
 function updateHud(){if(!match)return;
   $('score').innerHTML=`${match.scores[0]} <span>:</span> ${match.scores[1]}`;
   $('hudStatus').textContent=statusText();
@@ -317,7 +361,7 @@ function updateHud(){if(!match)return;
 function frame(time){
   requestAnimationFrame(frame);
   const dt=lastTime?Math.min(.04,(time-lastTime)/1000):0;lastTime=time;
-  if(active&&match){
+  if(active&&match&&mode!=='multi'){
     accumulator+=dt;
     let steps=0;
     while(accumulator>=match.cfg.tick&&steps<8){match.tick();accumulator-=match.cfg.tick;steps++;}
