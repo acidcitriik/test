@@ -1,3 +1,4 @@
+import {BrowserHost} from './browser-host.js';
 import {Match,clamp,magnitude} from './physics.js';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
@@ -323,17 +324,17 @@ function stopNetwork(){
 }
 function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
-  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><label>Adresse du serveur <input id="serverAddress" placeholder="ws://192.168.1.10:3000" /></label><p class="sub">Les deux joueurs doivent utiliser le même serveur.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" inputmode="numeric" maxlength="6" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
+  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
   $('lobbyStatus').textContent=message;
-  $('serverAddress').value=location.protocol==='https:'?'wss://'+location.host:'ws://'+location.host;
+
 }
 function connectMultiplayer(action){
-  const address=$('serverAddress').value.trim(),code=$('roomCode').value.trim();
-  if(action==='join'&&!/^\d{6}$/.test(code)){$('lobbyStatus').textContent='Saisis un code à six chiffres.';return;}
+  const code=$('roomCode').value.trim();
+  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
   stopNetwork();let ws;
-  try{ws=new WebSocket(address);}catch{showLobby('Adresse du serveur invalide.');return;}network=ws;
+  try{ws=new BrowserHost();}catch{showLobby('Adresse du serveur invalide.');return;}network=ws;
   $('lobbyStatus').textContent='Connexion…';
-  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Serveur inaccessible. Vérifie son adresse et le pare-feu.');}},10000);
+  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);
   ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};
   ws.onclose=()=>{if(network!==ws)return;stopNetwork();showLobby('Connexion interrompue. Recrée ou rejoins une partie.');};
   ws.onerror=()=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Connexion impossible : vérifie le serveur et son adresse.';};
