@@ -55,7 +55,7 @@ try{
  const first=await page.evaluate(()=>__synthpuck.snapshot());
  assert.equal(first.stage,'mute');assert.equal(first.mode,'arcade');
  assert.equal(first.state,'playing');assert.equal(first.aiStyle,'guard');
- assert.equal(first.opponentHeightNative,184,'The opponent is reduced and anchored behind the far rail');
+ assert.equal(first.opponentHeightNative,216,'The opponent has more presence and is seated behind the far rail');
  assert.equal(await page.locator('#fighterName').isHidden(),true,'Do not stack a redundant fighter name below the score');
  const hudPlacement=await page.evaluate(()=>{
    const hud=document.querySelector('#hud').getBoundingClientRect();
@@ -95,11 +95,12 @@ try{
    ai:api.spriteGeometry('ai',0,3.6),
    puck:api.spriteGeometry('puck',0,0)};
  });
- assert.deepEqual(calibrated.table.near,{y:770,left:225,right:1450});
+ assert.deepEqual(calibrated.table.near,{y:816,left:200,right:1475});
  assert.deepEqual(calibrated.table.far,{y:390,left:680,right:992});
- assert.ok(Math.abs(calibrated.middle.y-544)<1,'Puck center follows painted midline');
+ assert.deepEqual(calibrated.table.center,{y:554,left:475,right:1201});
+ assert.ok(Math.abs(calibrated.middle.y-554)<1,'Puck center follows painted midline');
  assert.ok(calibrated.far.every(p=>p.y===390),'Invisible back rail stays on painted far edge');
- assert.ok(calibrated.near.every(p=>p.y===770),'Invisible near rail stays on painted near edge');
+ assert.ok(calibrated.near.every(p=>p.y===816),'Invisible near rail stays on painted near edge');
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
   assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
   assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
