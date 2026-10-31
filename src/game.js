@@ -65,7 +65,7 @@ light(0x5eeafa,65,-3.5,5,-2.0);light(0xf5a553,52,3.4,5,3.5);
 const directional=new THREE.DirectionalLight(0xd5efff,3.1);directional.position.set(-5,11,0);directional.castShadow=true;directional.shadow.mapSize.set(2048,2048);directional.shadow.camera.left=-11;directional.shadow.camera.right=11;directional.shadow.camera.top=11;directional.shadow.camera.bottom=-11;scene.add(directional);
 const mat=(c,metal=.0,rough=.5,emissive=null)=>new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough,emissive:emissive??0x000000,emissiveIntensity:emissive?.6:0});
 function box(w,h,d,x,y,z,m){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);mesh.position.set(x,y,z);mesh.receiveShadow=true;mesh.castShadow=true;scene.add(mesh);return mesh;}
-const board=mat(0x142d40,.38,.23),rim=mat(0x34495d,.6,.3),lineMat=new THREE.MeshBasicMaterial({color:0x5ee1e6,transparent:true,opacity:.75}),lineWarm=new THREE.MeshBasicMaterial({color:0xffb86c,transparent:true,opacity:.85});
+const board=mat(0x142d40,.38,.23),rim=mat(0xb4ff88,.6,.3),lineMat=new THREE.MeshBasicMaterial({color:0x5ee1e6,transparent:true,opacity:.75}),lineWarm=new THREE.MeshBasicMaterial({color:0xffb86c,transparent:true,opacity:.85});
 const {width:w,length:L,goalWidth:g}=match.cfg;
 box(w+.42,.28,L+.5,0,-.27,0,mat(0x111d2c,.7,.27));
 box(w,.12,L,0,-.06,0,board);
@@ -93,7 +93,7 @@ if(anyMamouda){
   floor.material.color.set(0x090916);
   floor.visible=false; // Prevent the huge neutral lab floor from masking painted bar layers.
   board.color.set(0x2a1728);
-  rim.color.set(0x503047);
+  rim.color.set(0xb4ff88);
   if(showMamoudaPainted){
     // Purely visual: tune the existing table to the painted cyberpunk scene.
     board.color.set(0x301629);
@@ -101,7 +101,7 @@ if(anyMamouda){
     board.metalness=.48;
     board.emissive.set(0x230718);
     board.emissiveIntensity=.35;
-    rim.color.set(0x5a2038);
+    rim.color.set(0xb4ff88);
     rim.metalness=.58;
     rim.roughness=.27;
     const paintedNeonRed=new THREE.MeshBasicMaterial({color:0xff385e,toneMapped:false});
