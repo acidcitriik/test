@@ -33,7 +33,7 @@ const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
-  stopNetwork();
+  stopNetwork();if($('connectionDebug'))$('connectionDebug').hidden=true;
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
   panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('MULTIJOUEUR','multi')}<button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
@@ -322,6 +322,15 @@ function stopNetwork(){
   clearInterval(networkTimer);networkTimer=null;
   if(network){network.onclose=null;network.close();network=null;}
 }
+let connectionReport='';
+function updateConnectionDebug(report){
+  connectionReport=report;
+  let box=$('connectionDebug');
+  if(!box){box=document.createElement('details');box.id='connectionDebug';box.open=true;box.innerHTML='<summary>Diagnostic de connexion</summary><p>Rapport sans adresses IP. Les ports indiqués sont ceux des candidats WebRTC.</p><button type="button" id="downloadDebug">Télécharger le rapport</button><pre id="connectionLog"></pre>';document.body.append(box);
+    $('downloadDebug').onclick=()=>{const url=URL.createObjectURL(new Blob([connectionReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='synthpuck-connexion.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  }
+  box.hidden=false;$('connectionLog').textContent=report;const log=$('connectionLog');log.scrollTop=log.scrollHeight;
+}
 function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
   panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
@@ -332,7 +341,8 @@ function connectMultiplayer(action){
   const code=$('roomCode').value.trim();
   if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
   stopNetwork();let ws;
-  try{ws=new BrowserHost();}catch{showLobby('Adresse du serveur invalide.');return;}network=ws;
+  try{ws=new BrowserHost();}catch(e){showLobby('Initialisation impossible : '+e.message);return;}network=ws;
+  ws.debug.onchange=updateConnectionDebug;updateConnectionDebug(ws.debug.report());
   $('lobbyStatus').textContent='Connexion…';
   const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);
   ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};

@@ -309,3 +309,5 @@
 
 .menu.menu-hotspots .btn:nth-child(3){color:white;font-size:clamp(12px,2vw,28px);line-height:1;cursor:pointer;background:#102b44ee!important;border:2px solid #48dfff;border-radius:12px;text-shadow:0 2px 4px black}
 #panel input{display:block;width:min(100%,420px);padding:12px;margin:10px 0 20px;background:#080c18;color:white;border:1px solid #48dfff;border-radius:6px;font:inherit}
+
+#connectionDebug{position:fixed;z-index:100;right:12px;top:12px;width:min(520px,calc(100vw - 24px));max-height:45vh;overflow:auto;background:#080c18f5;border:1px solid #48dfff;border-radius:8px;padding:12px;color:white;font:13px system-ui}#connectionDebug summary{cursor:pointer;font-weight:bold}#connectionDebug pre{white-space:pre-wrap;overflow:auto;max-height:26vh;font:11px monospace}#connectionDebug button{padding:8px;cursor:pointer}#connectionDebug[hidden]{display:none}
