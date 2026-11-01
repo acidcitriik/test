@@ -11,7 +11,7 @@ export const SPRITE_URLS=Object.freeze({
  ai:'./assets/sprites/paddle-ai.webp'
 });
 export const SPRITE_ART=Object.freeze({
- player:Object.freeze({inkWidth:622,anchor:.64}),
- puck:Object.freeze({inkWidth:497,anchor:.44}),
- ai:Object.freeze({inkWidth:620,anchor:.64})
+ player:Object.freeze({inkWidth:622,anchor:.64,inkBottom:.945}),
+ puck:Object.freeze({inkWidth:497,anchor:.44,inkBottom:.93}),
+ ai:Object.freeze({inkWidth:620,anchor:.64,inkBottom:.945})
 });
