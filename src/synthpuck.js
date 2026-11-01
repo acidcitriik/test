@@ -312,7 +312,9 @@ function project(x,z){
 }
 function projectedRadius(x,z,r){
   const a=project(x-r,z),b=project(x+r,z),c=project(x,z-r),d=project(x,z+r);
-  return {rx:Math.max(3,Math.abs(b.x-a.x)/2),ry:Math.max(2,Math.abs(c.y-d.y)/2)};
+  // The safety floor is expressed in NATIVE stage pixels, not fixed CSS
+ // pixels. Fixed 3px/2px values exaggerated pucks on portrait mobile views.
+ return {rx:Math.max(3*layout.scale,Math.abs(b.x-a.x)/2),ry:Math.max(2*layout.scale,Math.abs(c.y-d.y)/2)};
 }
 // Independent transparent artwork. No source rectangles, so no cropped heads,
 // rims or cut puck edges. Alpha margins are part of each image.
