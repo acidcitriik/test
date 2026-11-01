@@ -27,3 +27,17 @@ test('all green collision and table outline drawing sites use translucent palett
  assert.equal(/#(?:16e65b|39ff75|B4FF88)/i.test(source),false,
   'No old opaque green debug stroke or fill must remain');
 });
+
+test('painted paddles and puck stay fully opaque above translucent green guides',async()=>{
+ const source=await readFile(new URL('../src/synthpuck.js',import.meta.url),'utf8');
+ const start=source.indexOf('function drawObject(obj,type){');
+ const end=source.indexOf('function drawHalEye(',start);
+ assert.ok(start>=0&&end>start,'Sprite drawing function must exist');
+ const draw=source.slice(start,end);
+ assert.ok(draw.includes('ctx.globalAlpha=1;'),'All painted sprites must use full opacity');
+ assert.equal(draw.includes('ctx.globalAlpha=.30'),false,'Old 30% opacity must be gone');
+ const guides=draw.indexOf('drawCollisionBody(obj,type);');
+ const image=draw.indexOf('ctx.drawImage(img,x,y,width,height);');
+ assert.ok(guides>=0&&image>guides,
+  'Green guides must be drawn beneath fully opaque WebP paddle/puck artwork');
+});
