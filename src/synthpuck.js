@@ -1,4 +1,7 @@
-import {cloudflareConfiguration} from './ice-config.js';
+import {cloudflareConfiguration,iceConfiguration} from './ice-config.js?v=online-20261101-3';
+import {playerAuth} from './player-auth.js?v=online-20261101-3';
+import {OnlineDirectory} from './online-directory.js';
+import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=round-log-20261101-3';
 import {Match,clamp,magnitude} from './physics.js?v=round-log-20261101-3';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
@@ -24,6 +27,9 @@ let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
 let lastTouch={x:0,y:0},inputMode='normal',pointerRequested=false;
 let layout={scale:1,x:0,y:0,cssW:1,cssH:1,dpr:1};
 let pausedReason='',showFarOpponent=false;
+const online=new OnlineDirectory(()=>renderOnlineSections(online,!!playerAuth.snapshot().user));
+online.onAccepted=()=>{if(screen==='lobby'&&$('lobbyStatus'))$('lobbyStatus').textContent='Invitation acceptée : connexion au duel en cours…';};
+try{const stored=Number(localStorage.getItem('synthpuck.mouseSensitivity'));if(stored>=.4&&stored<=2.4)mouseSensitivity=stored;}catch{}
 const isTouch=()=>navigator.maxTouchPoints>0 || matchMedia('(pointer:coarse)').matches;
 
 const statBar=(value,accent)=>`<div class="meter" style="--accent:${accent}">${Array.from({length:5},(_,i)=>`<i class="${i<value?'on':''}"></i>`).join('')}</div>`;
@@ -34,10 +40,14 @@ const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
-  stopNetwork();if($('connectionDebug'))$('connectionDebug').hidden=true;
+  stopNetwork();online.stop();if($('connectionDebug'))$('connectionDebug').hidden=true;
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
-  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('MULTIJOUEUR','multi')}<button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
+  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu-main-buttons" aria-label="Modes de jeu">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('ONLINE','online')}</nav><nav class="menu-secondary-buttons" aria-label="Compte et réglages">${btn('OPTIONS','options')}${btn('DÉCONNEXION','logout')}</nav></div>`;
+}
+function showOptions(message='Régle tes commandes avant de jouer.'){
+  setScreen('options');hud.hidden=true;touchBar.hidden=true;
+  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
@@ -118,7 +128,11 @@ function resume(){
 }
 function buttonAction(action){
   if(action==='downloadLog'){downloadRoundLog();}
-  else if(action==='multi'){stopNetwork();showLobby();}
+  else if(action==='online'||action==='multi'){stopNetwork();showLobby();}
+  else if(action==='options'){showOptions();}
+  else if(action==='logout'){if(playerAuth.snapshot().user){void playerAuth.signOut().then(showMenu).catch(e=>{showOptions('Déconnexion impossible : '+e.message);});}else{$('accountLauncher').click();}}
+  else if(action==='account'){$('accountLauncher').click();}
+  else if(action==='save-options'){const range=$('sensitivityRange');if(range){mouseSensitivity=clamp(Number(range.value)||1,.4,2.4);try{localStorage.setItem('synthpuck.mouseSensitivity',String(mouseSensitivity));}catch{}showOptions('Sensibilité enregistrée.');}}
   else if(action==='host'||action==='join'){connectMultiplayer(action);}
   else if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
   else if(action==='arcade'){level=0;mode='arcade';showArcadeIntro();}
@@ -145,6 +159,11 @@ panel.addEventListener('click',event=>{
     return;
   }
   if(button.dataset.character){selected=button.dataset.character;showTrainingSelect();return;}
+  if(button.dataset.onlineInvite){void connectMultiplayer('host',null,button.dataset.onlineInvite);return;}
+  if(button.dataset.onlineRespond){const id=button.dataset.onlineRespond,accept=button.dataset.onlineAccept==='1';
+    if($('lobbyStatus'))$('lobbyStatus').textContent=accept?'Acceptation de l’invitation…':'Refus de l’invitation…';
+    if(accept)online.status='busy';
+    void online.respond(id,accept).then(code=>{if(accept&&code)void connectMultiplayer('join',code);else if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation refusée.';}).catch(e=>{online.status='available';if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation : '+e.message;});return;}
   if(button.dataset.action)buttonAction(button.dataset.action);
 });
 $('pauseButton').addEventListener('click',()=>{if(active)showPause();});
@@ -360,6 +379,7 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
   drawPhysicalTableWalls();
 }
 function stopNetwork(){
+  if(network&&online.ready)void online.cancelPending().catch(()=>{});
   connectionAttempt=null;
   clearInterval(networkTimer);networkTimer=null;
   if(network){network.onclose=null;network.close();network=null;}
@@ -374,38 +394,104 @@ function updateConnectionDebug(report){
   }
   box.hidden=false;$('connectionLog').textContent=report;const log=$('connectionLog');log.scrollTop=log.scrollHeight;
 }
-function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
+function showLobby(message='Choisis un joueur en ligne ou utilise un code privé.'){
+  online.status='available';
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
-  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p><label>Code privé du relais Cloudflare <input id="relayAccess" type="password" autocomplete="off" /></label><p class="sub">Pour votre test privé, utilisez le même code de relais sur les deux appareils.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
-  $('lobbyStatus').textContent=message;try{$('relayAccess').value=sessionStorage.getItem('synthpuckRelayAccess')||'';}catch{}
-
+  panel.innerHTML=lobbyMarkup(btn);
+  $('lobbyStatus').textContent=message;
+  renderOnlineSections(online,!!playerAuth.snapshot().user);
+  void online.start().then(()=>online.pulse());
 }
-async function connectMultiplayer(action){
-  const code=$('roomCode').value.trim();
-  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
-  const access=$('relayAccess').value.trim();if(!access){$('lobbyStatus').textContent='Saisis le code privé du relais Cloudflare.';return;}
-  stopNetwork();let ws;const attempt=Symbol();connectionAttempt=attempt;$('lobbyStatus').textContent='Préparation du relais Cloudflare…';
-  try{const config=await cloudflareConfiguration(access);if(connectionAttempt!==attempt||screen!=='lobby')return;try{sessionStorage.setItem('synthpuckRelayAccess',access);}catch{}ws=new BrowserHost(config);}catch(e){if(connectionAttempt===attempt&&screen==='lobby')showLobby('Initialisation impossible : '+e.message);return;}network=ws;
+async function connectMultiplayer(action,suppliedCode=null,inviteTarget=null){
+  const code=(suppliedCode??$('roomCode')?.value??'').trim();
+  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,128}$/.test(code)){
+    if($('lobbyStatus'))$('lobbyStatus').textContent='Colle un code de partie valide.';
+    return;
+  }
+  if(network)stopNetwork();
+  const attempt=Symbol();connectionAttempt=attempt;
+  const notify=message=>{if($('lobbyStatus'))$('lobbyStatus').textContent=message;};
+  notify('Préparation de la connexion WebRTC…');
+  let config=iceConfiguration(),relayMessage='';
+  if(playerAuth.snapshot().user){
+    try{
+      const token=await playerAuth.accessToken();
+      if(token)config=await cloudflareConfiguration(token);
+      else relayMessage=' Relais privé indisponible : STUN uniquement.';
+    }catch(error){
+      // Deployed TURN Worker and authenticated Supabase are optional during rollout.
+      // Never ask the player for or expose a shared TURN API key.
+      relayMessage=' Relais TURN non activé : connexion directe uniquement.';
+    }
+  }else relayMessage=' Mode invité : connexion directe (réseaux restrictifs non garantis).';
+  if(connectionAttempt!==attempt||screen!=='lobby')return;
+  const ws=new BrowserHost(config);network=ws;
   ws.debug.onchange=updateConnectionDebug;updateConnectionDebug(ws.debug.report());
-  $('lobbyStatus').textContent='Connexion…';
-  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);
-  ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};
-  ws.onclose=()=>{if(network!==ws)return;stopNetwork();showLobby('Connexion interrompue. Recrée ou rejoins une partie.');};
-  ws.onerror=()=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Connexion impossible : vérifie le serveur et son adresse.';};
-  ws.onmessage=e=>{if(network!==ws)return;const d=JSON.parse(e.data);
-    if(d.type==='lobby'){$('lobbyStatus').textContent='Code : '+d.code+' — En attente du deuxième joueur…';}
+  notify('Connexion au service de jeu…'+relayMessage);
+  const timeout=setTimeout(()=>{
+    if(network===ws&&ws.readyState!==WebSocket.OPEN){
+      stopNetwork();showLobby('Service de connexion indisponible. Vérifie Internet.');
+    }
+  },30000);
+  ws.onopen=()=>{
+    clearTimeout(timeout);
+    if(network!==ws)return;
+    ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));
+  };
+  ws.onclose=()=>{
+    clearTimeout(timeout);
+    if(network!==ws)return;
+    stopNetwork();showLobby('Connexion interrompue. Tu peux réessayer.');
+  };
+  ws.onerror=()=>notify('Échec de la connexion. Vérifie Internet.');
+  ws.onmessage=e=>{
+    if(network!==ws)return;
+    const d=JSON.parse(e.data);
+    if(d.type==='lobby'){
+      notify('Code : '+d.code+' · En attente de ton adversaire…'+relayMessage);
+      if(inviteTarget){
+        const target=inviteTarget;inviteTarget=null;
+        void online.setStatus('busy')
+          .then(()=>online.invite(target,d.code))
+          .then(()=>notify('Invitation envoyée ! Attends que ton adversaire accepte.'))
+          .catch(error=>{
+            notify('Invitation impossible : '+error.message+' · Tu peux partager le code : '+d.code);
+            void online.setStatus('available');
+          });
+      }
+    }
     if(d.type==='error'){stopNetwork();showLobby(d.message);}
     if(d.type==='left'){stopNetwork();showLobby('L’autre joueur a quitté la partie.');}
     if(d.type==='start'){
-      networkSlot=d.slot;mode='multi';match=new Match();currentStage='training';setBackground('training',false);
-      hud.hidden=false;touchBar.hidden=!isTouch();$('hudMode').textContent='MULTIJOUEUR';$('hudStage').textContent='DUEL 1V1';$('hudLevel').textContent=networkSlot?'JOUEUR 2':'JOUEUR 1';resume();
-      networkTimer=setInterval(()=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<4096)ws.send(JSON.stringify({type:'input',...match.target,left:match.input.left,right:match.input.right}));},1000/60);
+      // Keep signed-in players visible as EN PARTIE while their duel runs.
+      online.status='busy';void online.pulse();
+      networkSlot=d.slot;mode='multi';match=new Match();
+      currentStage='training';setBackground('training',false);
+      hud.hidden=false;touchBar.hidden=!isTouch();
+      $('hudMode').textContent='ONLINE';$('hudStage').textContent='DUEL 1V1';
+      $('hudLevel').textContent=networkSlot?'JOUEUR 2':'JOUEUR 1';
+      resume();
+      networkTimer=setInterval(()=>{
+        if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<4096)
+          ws.send(JSON.stringify({type:'input',...match.target,left:match.input.left,right:match.input.right}));
+      },1000/60);
     }
     if(d.type==='state'&&match){
       const flip=p=>({...p,x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});
-      Object.assign(match.player,networkSlot?flip(d.ai):d.player);Object.assign(match.ai,networkSlot?flip(d.player):d.ai);Object.assign(match.puck,networkSlot?flip(d.puck):d.puck);
-      match.scores=networkSlot?[...d.scores].reverse():d.scores;match.state=d.state;match.server=networkSlot?-d.server:d.server;match.awaitingServe=d.awaitingServe;
-      if(d.state==='over'){active=false;clearInterval(networkTimer);setScreen('result',true);panel.innerHTML=`<div class="compact-center"><h2>${match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE'}</h2><p>${match.scores.join(' : ')}</p>${btn('RETOUR AU LOBBY','multi',true)}${btn('MENU','menu')}</div>`;document.exitPointerLock?.();}
+      Object.assign(match.player,networkSlot?flip(d.ai):d.player);
+      Object.assign(match.ai,networkSlot?flip(d.player):d.ai);
+      Object.assign(match.puck,networkSlot?flip(d.puck):d.puck);
+      match.scores=networkSlot?[...d.scores].reverse():d.scores;
+      match.state=d.state;match.server=networkSlot?-d.server:d.server;
+      match.awaitingServe=d.awaitingServe;
+      if(d.state==='over'){
+        active=false;clearInterval(networkTimer);setScreen('result',true);
+        panel.innerHTML='<div class="compact-center"><h2>'+
+          (match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE')+
+          '</h2><p>'+match.scores.join(' : ')+'</p>'+
+          btn('RETOUR AU LOBBY','multi',true)+btn('MENU','menu')+'</div>';
+        document.exitPointerLock?.();
+      }
     }
   };
 }
@@ -434,33 +520,40 @@ function setBackground(stage,withOpponent){
   else{drawBackdrop();}
 }
 addEventListener('resize',resize);
+function isGameInputBlocked(event){
+  if(!$('accountOverlay').hidden)return true;
+  const target=event?.target;
+  return target instanceof Element && Boolean(target.closest(
+    'input,select,textarea,[contenteditable="true"],[role="textbox"]'));
+}
 document.addEventListener('mousemove',e=>{
-  if(!active||!match||isTouch())return;
+  if(!active||!match||isTouch()||isGameInputBlocked(e))return;
   // Relative motion allows the original controller to stay instant and reversible.
   const movement=moveTargetWithMouse(match.target,e.movementX,e.movementY,mouseSensitivity,match.cfg);
   match.target.x=movement.x;match.target.z=movement.z;
 });
-arena.addEventListener('click',()=>{if(active&&!isTouch()&&document.pointerLockElement!==arena){arena.requestPointerLock?.().catch(()=>{});}});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena){pointerRequested=false;if(active&&!isTouch())showPause();}});
-document.addEventListener('mousedown',e=>{if(!active||!match||isTouch())return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
+arena.addEventListener('click',()=>{if(active&&$('accountOverlay').hidden&&!isTouch()&&document.pointerLockElement!==arena){arena.requestPointerLock?.().catch(()=>{});}});
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena){pointerRequested=false;if(active&&!isTouch()&&$('accountOverlay').hidden)showPause();}});
+document.addEventListener('mousedown',e=>{if(!active||!match||isTouch()||isGameInputBlocked(e))return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
 document.addEventListener('mouseup',e=>{if(!match||isTouch())return;if(e.button===0)match.setButton('left',false);if(e.button===2)match.setButton('right',false);});
 document.addEventListener('contextmenu',e=>{if(active)e.preventDefault();});
 arena.addEventListener('touchstart',e=>{
-  if(!active||!match||touchId!==null)return;
+  if(!active||!match||touchId!==null||isGameInputBlocked(e))return;
   const t=e.changedTouches[0];if(!t)return;e.preventDefault();touchId=t.identifier;lastTouch={x:t.clientX,y:t.clientY};
 },{passive:false});
 addEventListener('touchmove',e=>{
-  if(!active||touchId===null||!match)return;
+  if(!active||touchId===null||!match||isGameInputBlocked(e))return;
   const t=[...e.changedTouches].find(t=>t.identifier===touchId);if(!t)return;e.preventDefault();
   const target=moveTargetWithTouch(match.target,t.clientX-lastTouch.x,t.clientY-lastTouch.y,layout.cssW,layout.cssH,mouseSensitivity,match.cfg);
   match.target.x=target.x;match.target.z=target.z;lastTouch={x:t.clientX,y:t.clientY};
 },{passive:false});
 for(const type of ['touchend','touchcancel'])addEventListener(type,e=>{if([...e.changedTouches].some(t=>t.identifier===touchId))touchId=null;});
 addEventListener('keydown',e=>{
+  if(isGameInputBlocked(e))return;
   if(e.code==='Escape'&&active){e.preventDefault();showPause();}
   if(e.code==='Space'){e.preventDefault();if(screen==='pause'||screen==='point')resume();}
 });
-addEventListener('blur',()=>{match?.setButton('left',false);match?.setButton('right',false);if(active)showPause('FENÊTRE INACTIVE');});
+addEventListener('blur',()=>{match?.setButton('left',false);match?.setButton('right',false);if(active&&$('accountOverlay').hidden)showPause('FENÊTRE INACTIVE');});
 // Read-only diagnostics support end-to-end verification of game states.
 window.__synthpuck=Object.freeze({
   snapshot:()=>({screen,mode,level,opponent:opponent.id,stage:currentStage,
