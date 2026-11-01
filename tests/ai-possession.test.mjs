@@ -6,6 +6,7 @@ import { chooseAITarget, createAIBrain } from '../src/ai.js';
 function scenario(puck, seconds=8) {
   const match=new Match({ scoreToWin:99 });
   match.serve();
+  match.awaitingServe=false; // direct in-play scenario, not an opening faceoff
   Object.assign(match.puck,puck);
   const impacts=[],rails=[];
   let prevVx=match.puck.vx;
@@ -51,7 +52,7 @@ test('staged bank shot can bounce in the AI half and be followed by a second str
   assert.ok(second.vz < -2,'follow-up should be a direct return towards the player');
 });
 test('AI motor speed stays within physical limit while attempting multi-touch play',()=>{
-  const m=new Match();m.serve();Object.assign(m.puck,{x:0,z:2,vx:0,vz:0});
+  const m=new Match();m.serve();m.awaitingServe=false;Object.assign(m.puck,{x:0,z:2,vx:0,vz:0});
   for(let i=0;i<1200&&m.state==='playing';i++) {
     m.tick();
     assert.ok(Math.hypot(m.ai.vx,m.ai.vz)<=m.cfg.aiSpeed+1e-7);
@@ -61,7 +62,7 @@ test('AI motor speed stays within physical limit while attempting multi-touch pl
 test('AI possession planning remains deterministic across runs',()=>{
   const x=new Match(),y=new Match();
   x.serve();y.serve();
-  for(const m of [x,y])Object.assign(m.puck,{x:0,z:2,vx:0,vz:0});
+  for(const m of [x,y]){m.awaitingServe=false;Object.assign(m.puck,{x:0,z:2,vx:0,vz:0});}
   for(let i=0;i<320;i++){ x.tick();y.tick(); }
   assert.deepEqual(x.aiBrain,y.aiBrain);
   assert.deepEqual(x.puck,y.puck);
