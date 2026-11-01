@@ -454,7 +454,9 @@ async function connectMultiplayer(action,suppliedCode=null,inviteTarget=null){
     if(d.type==='error'){stopNetwork();showLobby(d.message);}
     if(d.type==='left'){stopNetwork();showLobby('L’autre joueur a quitté la partie.');}
     if(d.type==='start'){
-      online.stop();networkSlot=d.slot;mode='multi';match=new Match();
+      // Keep signed-in players visible as EN PARTIE while their duel runs.
+      online.status='busy';void online.pulse();
+      networkSlot=d.slot;mode='multi';match=new Match();
       currentStage='training';setBackground('training',false);
       hud.hidden=false;touchBar.hidden=!isTouch();
       $('hudMode').textContent='ONLINE';$('hudStage').textContent='DUEL 1V1';
