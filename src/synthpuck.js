@@ -377,9 +377,12 @@ function drawSmashEffect(obj){
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
  const img=images.sprites[type];
+ // Green collision guides are translucent underlays. Paint sprites
+ // afterward at full opacity so their artwork is never ghosted.
+ drawCollisionBody(obj,type);
  if(img?.complete&&img.naturalWidth){
   ctx.save();
-  ctx.globalAlpha=.30;
+  ctx.globalAlpha=1; // Preserve opaque painted WebP pixels (transparent margins remain)
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
   ctx.shadowColor='#030712b8';ctx.shadowBlur=5*layout.scale;
@@ -401,7 +404,6 @@ function drawObject(obj,type){
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
   ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];ctx.fill();
  }
- drawCollisionBody(obj,type);
  if(type==='puck' && obj.smashActive)drawSmashEffect(obj);
 }
 function drawHalEye(dt){
