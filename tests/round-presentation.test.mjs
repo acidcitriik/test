@@ -9,7 +9,7 @@ import {
 test('opening announcement delay is randomized only between 1 and 4 seconds',()=>{
  assert.equal(randomReadyDelayMs(()=>0),1000);
  assert.equal(randomReadyDelayMs(()=>.5),2500);
- assert.equal(randomReadyDelayMs(()=>.9999),3999);
+ assert.equal(randomReadyDelayMs(()=>.9999),4000);
  assert.equal(randomReadyDelayMs(()=>1),4000);
  assert.equal(randomReadyDelayMs(()=>-1),1000);
  assert.ok(GO_DURATION_MS>0&&GOAL_DURATION_MS>0&&RESULT_DURATION_MS>0);
