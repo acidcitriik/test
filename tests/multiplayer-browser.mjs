@@ -1,5 +1,2 @@
-import {chromium} from 'playwright';
-const browser=await chromium.launch({headless:true,channel:'msedge'});
-try{const a=await browser.newPage(),b=await browser.newPage();const errors=[];for(const p of [a,b]){p.on('pageerror',e=>errors.push(e.message));await p.goto('http://localhost:3000');await p.locator('#panel').click();await p.getByRole('button',{name:'MULTIJOUEUR',exact:true}).click();}
-await a.getByRole('button',{name:'CRÉER UNE PARTIE',exact:true}).click();await a.waitForFunction(()=>document.querySelector('#lobbyStatus').textContent.includes('Code :'));const code=(await a.locator('#lobbyStatus').textContent()).match(/Code : (\S+)/)[1];await b.locator('#roomCode').fill(code);await b.getByRole('button',{name:'REJOINDRE',exact:true}).click();for(const p of [a,b])await p.waitForFunction(()=>window.__synthpuck.snapshot().mode==='multi'&&window.__synthpuck.snapshot().screen==='playing');if(errors.length)throw Error(errors.join('\n'));console.log('PASS browser: two players enter lobby and start match');}finally{await browser.close();}
-
+// Private real TURN test; requires SYNTHPUCK_RELAY_ACCESS.
+import './cloudflare-relay.mjs';

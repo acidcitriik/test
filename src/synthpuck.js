@@ -1,3 +1,4 @@
+import {cloudflareConfiguration} from './ice-config.js';
 import {BrowserHost} from './browser-host.js';
 import {Match,clamp,magnitude} from './physics.js';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
@@ -319,9 +320,11 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
   drawPhysicalTableWalls();
 }
 function stopNetwork(){
+  connectionAttempt=null;
   clearInterval(networkTimer);networkTimer=null;
   if(network){network.onclose=null;network.close();network=null;}
 }
+let connectionAttempt=null;
 let connectionReport='';
 function updateConnectionDebug(report){
   connectionReport=report;
@@ -333,15 +336,16 @@ function updateConnectionDebug(report){
 }
 function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
-  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
-  $('lobbyStatus').textContent=message;
+  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p><label>Code privé du relais Cloudflare <input id="relayAccess" type="password" autocomplete="off" /></label><p class="sub">Pour votre test privé, utilisez le même code de relais sur les deux appareils.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
+  $('lobbyStatus').textContent=message;try{$('relayAccess').value=sessionStorage.getItem('synthpuckRelayAccess')||'';}catch{}
 
 }
-function connectMultiplayer(action){
+async function connectMultiplayer(action){
   const code=$('roomCode').value.trim();
   if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
-  stopNetwork();let ws;
-  try{ws=new BrowserHost();}catch(e){showLobby('Initialisation impossible : '+e.message);return;}network=ws;
+  const access=$('relayAccess').value.trim();if(!access){$('lobbyStatus').textContent='Saisis le code privé du relais Cloudflare.';return;}
+  stopNetwork();let ws;const attempt=Symbol();connectionAttempt=attempt;$('lobbyStatus').textContent='Préparation du relais Cloudflare…';
+  try{const config=await cloudflareConfiguration(access);if(connectionAttempt!==attempt||screen!=='lobby')return;try{sessionStorage.setItem('synthpuckRelayAccess',access);}catch{}ws=new BrowserHost(config);}catch(e){if(connectionAttempt===attempt&&screen==='lobby')showLobby('Initialisation impossible : '+e.message);return;}network=ws;
   ws.debug.onchange=updateConnectionDebug;updateConnectionDebug(ws.debug.report());
   $('lobbyStatus').textContent='Connexion…';
   const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);

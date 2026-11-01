@@ -74,3 +74,11 @@ PeerJS Cloud assure la mise en relation ; les données de jeu passent directemen
 La bibliothèque PeerJS est distribuée localement dans src/vendor avec sa licence. Le serveur Node optionnel reste disponible avec npm start pour le développement local.
 
 Tests : npm test. Le test tests/multiplayer-browser.mjs utilise deux navigateurs Edge, le site local sur le port 3000 et le service PeerJS réel.
+
+### Relais Cloudflare pour les essais privés
+
+Le jeu demande maintenant un code privé de relais, conservé uniquement dans sessionStorage. Ce code est partagé entre les deux testeurs ; il ne s’agit pas de la clé API Cloudflare. Le Worker https://synthpuck-turn.acidcitriik.workers.dev génère des accès TURN valables deux heures. Sa clé API reste dans un secret Cloudflare. Les parties de plus de deux heures nécessitent une nouvelle connexion.
+
+Le code du Worker est dans cloudflare/turn-worker.js. Secrets à configurer dans Cloudflare : TURN_KEY_ID, TURN_API_TOKEN, RELAY_ACCESS_CODE. Aucun de ces secrets ne doit être commité. L’origine autorisée est https://acidcitriik.github.io. Le code privé protège l’accès aux identifiants temporaires ; CORS seul ne protège pas le quota. Ce mécanisme est prévu pour des tests privés, pas pour un lancement public.
+
+Test réel : définir SYNTHPUCK_RELAY_ACCESS dans l’environnement puis lancer node tests/cloudflare-relay.mjs, avec le serveur local actif. Le test impose TURN en TLS sur le port 443 et vérifie le refus d’un mauvais code.

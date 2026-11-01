@@ -27,7 +27,7 @@ export class ConnectionDebug {
   diagnosis(){this.log('Candidats observés',[...(this.candidateTypes||[])]);const localPublic=[...(this.candidateTypes||[])].some(t=>t.startsWith('local')&&(t.endsWith(':srflx')||t.endsWith(':relay')));if(this.pc&&!localPublic)this.log('Découverte réseau','Aucun candidat public ou relais local observé : vérifier les erreurs STUN/TURN. Une erreur 701 isolée ne suffit pas à conclure à un blocage DNS ou de port.');const state=this.pc?.iceConnectionState;
     if(!this.pc)this.log('Bilan','Aucune connexion WebRTC créée : vérifier la signalisation, le code et la disponibilité de l’hôte.');
     else if(['connected','completed'].includes(state))this.log('Bilan','ICE connecté. Vérifier l’ouverture du canal de données et les événements applicatifs.');
-    else this.log('Bilan','Aucun chemin WebRTC établi. Causes possibles : réseau filtré, NAT, échange de candidats incomplet ou hôte indisponible. Les relais TURN PeerJS sont configurés, mais leur accessibilité n’est pas garantie.');
+    else this.log('Bilan','Aucun chemin WebRTC établi. Causes possibles : réseau filtré, NAT, échange de candidats incomplet ou hôte indisponible. Vérifier les candidats relay et les erreurs des serveurs ICE affichés ci-dessus.');
   }
   stop(){this.stopped=true;clearInterval(this.poll);clearInterval(this.stats);}
 }
