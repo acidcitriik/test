@@ -354,3 +354,33 @@
 }
 .paddle-calibration-actions{display:grid;gap:6px}
 .paddle-calibration-panel .btn{font-size:17px;padding:7px 12px;min-height:34px}
+
+
+/* Round announcements float above the arena, never replace it with a modal.
+   SVG artwork has transparent pixels; pointer input and table physics are not
+   intercepted by this presentation layer. */
+#roundAnnouncement{
+ position:fixed;inset:0;z-index:8;display:grid;place-items:center;
+ pointer-events:none;background:transparent;overflow:hidden;
+}
+#roundAnnouncement[hidden]{display:none!important}
+#roundAnnouncement img{
+ display:block;width:min(78vw,1100px);height:auto;max-height:52dvh;
+ object-fit:contain;filter:drop-shadow(0 8px 12px #0009);
+ animation:roundSplashPop .24s cubic-bezier(.2,1.35,.4,1) both;
+ user-select:none;-webkit-user-drag:none;
+}
+#roundAnnouncement[data-kind="ready"] img{width:min(82vw,1180px);max-height:44dvh}
+#roundAnnouncement[data-kind="go"] img{width:min(57vw,790px)}
+#roundAnnouncement[data-kind="win"] img,
+#roundAnnouncement[data-kind="lose"] img{width:min(86vw,1180px)}
+@keyframes roundSplashPop{
+ from{opacity:0;transform:scale(.67) rotate(-3deg)}
+ 80%{opacity:1;transform:scale(1.055) rotate(.7deg)}
+ to{opacity:1;transform:scale(1) rotate(0)}
+}
+@media(max-width:760px){
+ #roundAnnouncement img,#roundAnnouncement[data-kind="ready"] img,
+ #roundAnnouncement[data-kind="win"] img,#roundAnnouncement[data-kind="lose"] img{width:94vw;max-height:40dvh}
+ #roundAnnouncement[data-kind="go"] img{width:74vw}
+}
