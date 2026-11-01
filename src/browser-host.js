@@ -1,7 +1,7 @@
 import {iceConfiguration} from './ice-config.js';
 import {ConnectionDebug} from './connection-debug.js';
 import './vendor/peerjs.min.js';
-import {Match,clamp} from './physics.js?v=smash-effect-20261101-6';
+import {Match,clamp} from './physics.js?v=smash-speeds-20261101-7';
 
 // Socket-shaped adapter: game simulation lives exclusively in the host browser.
 export class BrowserHost {

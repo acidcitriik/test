@@ -9,7 +9,7 @@ export const DEFAULTS = Object.freeze({
   wallRestitution: 0.94, paddleRestitution: 0.96,
   friction: 0.25, paddleGrip: 0.65, wallFriction: 0.32, gestureTransfer: 0.40, drag: 0.09, spinDrag: 0.32,
   aiSpeed: 6.7, aiAcceleration: 36,
-  smashEffectMinSpeed: 14, smashEffectMinIntensity: .5,
+  normalHitMaxSpeed: 16, smashEffectMinSpeed: 14, smashEffectMinIntensity: .5,
   tick: 1 / 120, scoreToWin: 7
 });
 
@@ -17,10 +17,10 @@ export const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
 export const magnitude = (x, z) => Math.hypot(x, z);
 const EPS = 1e-9;
 export const MAX_PUCK_SPEED = 28;
-function limitPuckSpeed(puck) {
+function limitPuckSpeed(puck, limit = MAX_PUCK_SPEED) {
   const speed = magnitude(puck.vx, puck.vz);
-  if (speed <= MAX_PUCK_SPEED) return false;
-  puck.vx *= MAX_PUCK_SPEED / speed; puck.vz *= MAX_PUCK_SPEED / speed;
+  if (speed <= limit) return false;
+  puck.vx *= limit / speed; puck.vz *= limit / speed;
   return true;
 }
 
@@ -158,10 +158,14 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   puck.vx += tangentImpulse * tx;
   puck.vz += tangentImpulse * tz;
   puck.spin -= 2 * tangentImpulse / radius;
-  const capped = limitPuckSpeed(puck);
+  // High outgoing speeds require a prepared smash, regardless of player or AI.
+  // Blend the limit for qualified strokes instead of a sudden power jump.
+  const smashPower = clamp((smash - cfg.smashEffectMinIntensity) / (1 - cfg.smashEffectMinIntensity), 0, 1);
+  const speedLimit = cfg.normalHitMaxSpeed + (MAX_PUCK_SPEED - cfg.normalHitMaxSpeed) * smashPower;
+  const capped = limitPuckSpeed(puck, speedLimit);
   if (smash >= cfg.smashEffectMinIntensity && magnitude(puck.vx, puck.vz) >= cfg.smashEffectMinSpeed) puck.smashActive = true;
   if (magnitude(puck.vx, puck.vz) < cfg.smashEffectMinSpeed) puck.smashActive = false;
-  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped, smash };
+  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped, smash, speedLimit };
   return true;
 }
 

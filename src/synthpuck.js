@@ -2,8 +2,8 @@ import {cloudflareConfiguration,iceConfiguration} from './ice-config.js?v=online
 import {playerAuth} from './player-auth.js?v=online-20261101-3';
 import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
-import {BrowserHost} from './browser-host.js?v=smash-effect-20261101-6';
-import {Match,clamp,magnitude} from './physics.js?v=smash-effect-20261101-6';
+import {BrowserHost} from './browser-host.js?v=smash-speeds-20261101-7';
+import {Match,clamp,magnitude} from './physics.js?v=smash-speeds-20261101-7';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
