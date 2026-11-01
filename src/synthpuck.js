@@ -8,6 +8,7 @@ import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
+import {TABLE_CALIBRATION,createTableProjection} from './table-projection.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
 const NATIVE={w:1672,h:941};
@@ -256,29 +257,17 @@ function drawOpponent(){
   bg.drawImage(image,x,y,width,height);
   bg.restore();
 }
-// The painted 1672×941 table is THE reference. Never redraw it or move the
-// collision walls: only their screen-space projection is calibrated here.
-// The near edge and centre were already aligned. The screenshot reveals that
-// the distant physical rail was projected slightly above / inside the painted
-// inner rail, which produces the false impression of a perspective mismatch.
-const ORIGINAL_PROJECTION=Object.freeze({far:{y:390,left:680,right:992}});
-export const TABLE_CALIBRATION=Object.freeze({
- far:{y:400,left:670,right:1002},
- center:{y:554,left:475,right:1201},
- near:{y:816,left:200,right:1475}
-});
+// Use the original painted table as the absolute screen-space reference.
+// Never alter the backdrop, the physical table or the sprite assets.
+let tableProjection=null, projectionConfig=null;
 function project(x,z){
-  // World X faces camera-left. Preserve the validated front/centre projection
-  // and fade the rear-only calibration smoothly to zero before midfield.
-  const u=clamp(.5-x/match.cfg.width,0,1);
-  const v=clamp(.5-z/match.cfg.length,0,1);
-  const rear=clamp(1-2*v,0,1);
-  const weight=rear*rear*(3-2*rear); // C1 continuous at the centre and far edge
-  const far=TABLE_CALIBRATION.far,old=ORIGINAL_PROJECTION.far;
-  const yy=390+230*v+196*v*v+(far.y-old.y)*weight;
-  const left=680-340*v-140*v*v+(far.left-old.left)*weight;
-  const right=992+353*v+130*v*v+(far.right-old.right)*weight;
-  return {x:layout.x+(left+(right-left)*u)*layout.scale,y:layout.y+yy*layout.scale};
+  if(!match)return {x:0,y:0};
+  if(projectionConfig!==match.cfg){
+    tableProjection=createTableProjection(match.cfg.width,match.cfg.length);
+    projectionConfig=match.cfg;
+  }
+  const p=tableProjection.project(x,z);
+  return {x:layout.x+p.x*layout.scale,y:layout.y+p.y*layout.scale};
 }
 function projectedRadius(x,z,r){
   const a=project(x-r,z),b=project(x+r,z),c=project(x,z-r),d=project(x,z+r);
