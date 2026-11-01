@@ -61,6 +61,16 @@ try{
  await page.getByRole('button',{name:'LANCER LE DUEL'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().ready);
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing');
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).roundSplash,'ready',
+  'Opening round must show Players ready?');
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).active,false,
+  'Puck motion must wait until GO ends');
+ await page.waitForFunction(()=>__synthpuck.snapshot().roundSplash==='go',null,{timeout:7000});
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).active,false,
+  'GO must display before the physics starts');
+ await page.waitForFunction(()=>__synthpuck.snapshot().active&&__synthpuck.snapshot().roundSplash===null,null,{timeout:7000});
+ assert.equal(await page.locator('#roundAnnouncement').isHidden(),true);
+
  await page.waitForFunction(()=>Object.values(__synthpuck.snapshot().spriteSizes).length===3 && Object.values(__synthpuck.snapshot().spriteSizes).every(([w,h])=>w>0&&h>0));
  assert.deepEqual((await page.evaluate(()=>__synthpuck.snapshot().spriteSizes)),{player:[674,482],puck:[549,361],ai:[672,482]},'All three HD approved sprites load at full resolution');
  const first=await page.evaluate(()=>__synthpuck.snapshot());
@@ -262,12 +272,14 @@ try{
  assert.equal(jumped.state,'playing');
  assert.equal(await page.locator('#hudLevel').innerText(),'04 / 07');
  assert.match(await page.locator('#hudStage').innerText(),/MAMOUDA/);
+ await page.waitForFunction(()=>__synthpuck.snapshot().active,null,{timeout:7000});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  assert.equal(await page.locator('[data-pause-level="3"]').getAttribute('aria-current'),'step');
  await page.getByRole('button',{name:'Niveau 01 : MUTE'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mute');
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).level,0,'Stage selection works in both directions');
+ await page.waitForFunction(()=>__synthpuck.snapshot().active,null,{timeout:7000});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
@@ -286,7 +298,9 @@ try{
    if(current==='point'){
     await page.getByRole('button',{name:'CONTINUER'}).click();
    }else if(current==='playing'){
-    await page.keyboard.press('Escape');
+    if(!(await page.evaluate(()=>__synthpuck.snapshot().active))){
+      await page.waitForFunction(()=>__synthpuck.snapshot().active||__synthpuck.snapshot().screen!=='playing',null,{timeout:7000});
+    }else await page.keyboard.press('Escape');
    }else{
     throw Error('Unexpected training screen while pausing: '+current);
    }
