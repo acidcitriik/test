@@ -222,6 +222,13 @@ try{
  assert.equal(afterOffsets.savedAi,'31');
  assert.equal(afterOffsets.playerLabel,'+22 px');
  assert.equal(afterOffsets.aiLabel,'+31 px');
+ // Verify the real values captured in the user's calibration UI.
+ await page.locator('#offset-number-player').fill('-4');
+ await page.locator('#offset-number-ai').fill('-1');
+ await page.waitForFunction(()=>{
+   const p=__synthpuck.snapshot().paddleOffsets;
+   return p.player===-4 && p.ai===-1;
+ });
  await page.getByRole('button',{name:'RETOUR PAUSE'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
@@ -272,14 +279,59 @@ try{
  await page.screenshot({path:'synthpuck-training-preview.png'});
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).halEyePosition,null,'Training uses the neutral backdrop');
  assert.equal(await page.locator('svg').count(),0,'No SVG in the training arena');
- // Verify that the complete table is visible on phones and wide screens;
- // the same world-to-stage projection must be used for all eight arenas.
- for(const viewport of [{width:390,height:844},{width:844,height:390},{width:1780,height:800},{width:1672,height:941}]){
+ // Compare every actor in NATIVE illustration coordinates, so 1 CSS
+ // pixel is not incorrectly treated as 1 stage pixel on narrow phones.
+ const normalizedGeometry=()=>page.evaluate(()=>{
+   const api=__synthpuck,snap=api.snapshot();
+   const {left,top,width}=snap.arenaFrame;
+   const scale=width/1672;
+   const norm=p=>({
+     x:(p.x-left)/scale,
+     y:(p.y-top)/scale,
+     ...(p.width===undefined?{}:{width:p.width/scale,height:p.height/scale})
+   });
+   const objects=[
+     ['player',0,-3.8],['player',2,-4.5],
+     ['ai',0,3.8],['ai',-2,4.5],['puck',.5,0]
+   ];
+   return {scale,offsets:snap.paddleOffsets,
+     objects:objects.map(([type,x,z])=>({
+       type,point:norm(api.project(x,z)),sprite:norm(api.spriteGeometry(type,x,z))
+     }))
+   };
+ });
+ const baseline=await normalizedGeometry();
+ assert.ok(Math.abs(baseline.scale-1)<1e-9,'Native reference scale is 1');
+ assert.deepEqual(baseline.offsets,{player:-4,ai:-1});
+ const compare=(actual,expected,label)=>{
+   for(const key of Object.keys(expected)){
+     assert.ok(Math.abs(actual[key]-expected[key])<1e-5,
+       label+' '+key+': '+actual[key]+' vs '+expected[key]);
+   }
+ };
+ // Verify table, sprites and exact offsets on small portrait, landscape,
+ // letterboxed, HD, Full HD and QHD screens without changing physical x/z.
+ for(const viewport of [
+  {width:320,height:700},{width:390,height:844},
+  {width:844,height:390},{width:800,height:600},
+  {width:1366,height:768},{width:1780,height:800},
+  {width:1920,height:1080},{width:2560,height:1440},
+  {width:1672,height:941}
+ ]){
   await page.setViewportSize(viewport);
   await page.waitForFunction(v=>{
    const size=window.__synthpuck.snapshot().viewport;
    return size.width===v.width&&size.height===v.height;
   },viewport);
+  const current=await normalizedGeometry();
+  assert.deepEqual(current.offsets,baseline.offsets,'Calibrated offsets must persist through resize');
+  const scale=Math.min(viewport.width/1672,viewport.height/941);
+  assert.ok(Math.abs(current.scale-scale)<1e-9,'Contain scale must match full artwork');
+  for(let index=0;index<current.objects.length;index++){
+    const actor=current.objects[index],reference=baseline.objects[index];
+    compare(actor.point,reference.point,viewport.width+'x'+viewport.height+' collider');
+    compare(actor.sprite,reference.sprite,viewport.width+'x'+viewport.height+' sprite '+actor.type);
+  }
   if(viewport.width===844)await page.screenshot({path:'synthpuck-landscape-preview.png'});
   if(viewport.width===1780){
     await page.screenshot({path:'synthpuck-wide-hud-preview.png'});
@@ -299,6 +351,42 @@ try{
   assert.ok(points.every(p=>p.x>=0&&p.x<=viewport.width&&p.y>=0&&p.y<=viewport.height),
    `Table must be fully framed at ${viewport.width}x${viewport.height}: ${JSON.stringify(points)}`);
  }
+ // Confirm DPR 3 only changes raster resolution, not native coordinates.
+ const retinaContext=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3});
+ await retinaContext.addInitScript(()=>{
+   localStorage.setItem('synthpuck.spriteOffset.player','-4');
+   localStorage.setItem('synthpuck.spriteOffset.ai','-1');
+ });
+ const retina=await retinaContext.newPage();
+ await retina.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
+ await retina.waitForFunction(()=>__synthpuck.snapshot().screen==='menu');
+ await retina.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
+ await retina.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
+ await retina.waitForFunction(()=>__synthpuck.snapshot().ready);
+ const hidpi=await retina.evaluate(()=>{
+   const api=__synthpuck,s=api.snapshot(),scale=s.arenaFrame.width/1672;
+   const norm=p=>({
+     x:(p.x-s.arenaFrame.left)/scale,
+     y:(p.y-s.arenaFrame.top)/scale,
+     ...(p.width===undefined?{}:{width:p.width/scale,height:p.height/scale})
+   });
+   return {dpr:devicePixelRatio,backingWidth:document.querySelector('#arena').width,
+     offsets:s.paddleOffsets,
+     objects:[['player',0,-3.8],['player',2,-4.5],
+       ['ai',0,3.8],['ai',-2,4.5],['puck',.5,0]]
+       .map(([type,x,z])=>({
+         type,point:norm(api.project(x,z)),sprite:norm(api.spriteGeometry(type,x,z))
+       }))
+   };
+ });
+ assert.equal(hidpi.dpr,3,'Retina check uses DPR 3');
+ assert.equal(hidpi.backingWidth,780,'Retina backing canvas is capped at DPR 2');
+ assert.deepEqual(hidpi.offsets,baseline.offsets,'Device density preserves stored offsets');
+ for(let i=0;i<hidpi.objects.length;i++){
+   compare(hidpi.objects[i].point,baseline.objects[i].point,'DPR 3 collider');
+   compare(hidpi.objects[i].sprite,baseline.objects[i].sprite,'DPR 3 sprite');
+ }
+ await retinaContext.close();
  const assets=await page.evaluate(async()=>{
   const ids=['mute','chonk','simous','mamouda','diamond','stal','2502','training'];
   const load=src=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve([image.naturalWidth,image.naturalHeight]);image.onerror=reject;image.src=src;});
