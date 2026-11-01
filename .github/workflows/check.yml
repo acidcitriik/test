@@ -5,7 +5,10 @@ on:
   pull_request:
 jobs:
   verify:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    # Run all syntax, simulation and browser checks in a disposable container.
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
@@ -33,7 +36,8 @@ jobs:
       - name: Install headless Chromium driver
         run: |
           npm install --no-save playwright@1.56.1
-          npx playwright install --with-deps chromium
+          # Chromium and its OS libraries are preinstalled in the pinned Playwright image.
+          npx playwright --version
       - name: Smoke test 3D game startup
         run: node tests/browser-smoke.mjs
       - name: Smoke test full Synthpuck Arcade and Training
