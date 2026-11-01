@@ -277,6 +277,23 @@ try{
  assert.equal(await page.locator('[data-character="2502"] strong').innerText(),'HAL');
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
  assert.equal(await page.locator('svg').count(),0,'No SVG in character selection');
+ // Point/timeout screens may legitimately appear during long screenshot loops.
+ // Recover through the real CONTINUER control, not a private state shortcut.
+ const pauseTraining=async()=>{
+  for(let attempt=0;attempt<8;attempt++){
+   const current=await page.evaluate(()=>__synthpuck.snapshot().screen);
+   if(current==='pause')return;
+   if(current==='point'){
+    await page.getByRole('button',{name:'CONTINUER'}).click();
+   }else if(current==='playing'){
+    await page.keyboard.press('Escape');
+   }else{
+    throw Error('Unexpected training screen while pausing: '+current);
+   }
+  }
+  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause',
+   'Training can be paused after genuine round transitions');
+ };
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
   await page.locator(`[data-character="${id}"]`).click();
   assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
@@ -286,10 +303,11 @@ try{
   if(id!=='2502')await page.screenshot({path:`synthpuck-opponent-${id}-preview.png`});
   const snap=await page.evaluate(()=>__synthpuck.snapshot());
   assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
-  assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
+  assert.equal(snap.opponent,id);
+  assert.ok(['playing','ready'].includes(snap.state),
+    'Training may finish a legal point while screenshots are captured');
   assert.match(await page.locator('#hudStage').innerText(),/^GRID 00 · /);
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+  await pauseTraining();
   assert.equal(await page.locator('[data-pause-level]').count(),0,'Training pause does not jump into Arcade');
   await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
   await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
