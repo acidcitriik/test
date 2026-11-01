@@ -408,17 +408,7 @@ function drawCollisionBody(obj,type){
  ctx.fillStyle=GREEN_DEBUG_OVERLAY.colliderIndicator;ctx.fill();
  ctx.restore();
 }
-function drawSmashEffect(obj){
- const center=project(obj.x,obj.z);
- const {rx,ry}=projectedRadius(obj.x,obj.z,match.cfg.puckRadius);
- ctx.save();
- ctx.shadowColor='#ff6100';ctx.shadowBlur=20*layout.scale;
- ctx.strokeStyle='#ff8a25';ctx.lineWidth=5*layout.scale;
- ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.35,ry*1.35,0,0,Math.PI*2);ctx.stroke();
- ctx.shadowBlur=8*layout.scale;ctx.strokeStyle='#fff4ae';ctx.lineWidth=2*layout.scale;
- ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.24,ry*1.24,0,0,Math.PI*2);ctx.stroke();
- ctx.restore();
-}
+// Smash is signalled by the scoring splash, not an unwanted orange halo around the puck.
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
  const img=images.sprites[type];
@@ -449,7 +439,7 @@ function drawObject(obj,type){
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
   ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];ctx.fill();
  }
- if(type==='puck' && obj.smashActive)drawSmashEffect(obj);
+ // No yellow/orange ring around the puck during a SMASH.
 }
 function drawHalEye(dt){
   if(currentStage!==HAL_STAGE_ID||!match)return;
