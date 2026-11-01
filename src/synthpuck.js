@@ -9,6 +9,7 @@ import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
 import {TABLE_CALIBRATION,createTableProjection} from './table-projection.js';
+import {DEFAULT_PADDLE_OFFSETS,normalizePaddleOffset,offsetSpriteY,OFFSET_MIN,OFFSET_MAX} from './paddle-offset.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
 const NATIVE={w:1672,h:941};
@@ -28,6 +29,13 @@ let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
 let lastTouch={x:0,y:0},inputMode='normal',pointerRequested=false;
 let layout={scale:1,x:0,y:0,cssW:1,cssH:1,dpr:1};
 let pausedReason='',showFarOpponent=false;
+const paddleOffsets={...DEFAULT_PADDLE_OFFSETS};
+for(const type of ['player','ai']){
+ try{
+  const stored=localStorage.getItem('synthpuck.spriteOffset.'+type);
+  if(stored!==null)paddleOffsets[type]=normalizePaddleOffset(stored,DEFAULT_PADDLE_OFFSETS[type]);
+ }catch{}
+}
 const online=new OnlineDirectory(()=>renderOnlineSections(online,!!playerAuth.snapshot().user));
 online.onAccepted=()=>{if(screen==='lobby'&&$('lobbyStatus'))$('lobbyStatus').textContent='Invitation acceptée : connexion au duel en cours…';};
 try{const stored=Number(localStorage.getItem('synthpuck.mouseSensitivity'));if(stored>=.4&&stored<=2.4)mouseSensitivity=stored;}catch{}
@@ -61,7 +69,23 @@ function showMenu(){
 }
 function showOptions(message='Régle tes commandes avant de jouer.'){
   setScreen('options');hud.hidden=true;touchBar.hidden=true;
-  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause.</p><p class="sub">Règles du temps palet : premier engagement au centre · 10 s pour servir après un but · 7 s pour renvoyer le palet dans le camp adverse. Dépassement : engagement adverse, aucun point.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
+  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause. Pendant un match, ouvre Pause → Caler les raquettes pour les descendre au pixel près, sans déplacer les collisions.</p><p class="sub">Règles du temps palet : premier engagement au centre · 10 s pour servir après un but · 7 s pour renvoyer le palet dans le camp adverse. Dépassement : engagement adverse, aucun point.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
+}
+function showCalibration(){
+ if(!match||mode==='multi')return;
+ active=false;
+ setScreen('calibration',true);
+ const field=(type,title)=>{
+  const value=paddleOffsets[type];
+  return `<div class="paddle-offset-row"><label for="paddle-offset-${type}">${title} <output id="offset-label-${type}">${value>0?'+':''}${value} px</output></label><div class="paddle-offset-inputs"><input id="paddle-offset-${type}" type="range" min="${OFFSET_MIN}" max="${OFFSET_MAX}" step="1" value="${value}" data-offset-type="${type}" aria-label="${title}, déplacement vertical"/><input id="offset-number-${type}" type="number" min="${OFFSET_MIN}" max="${OFFSET_MAX}" step="1" value="${value}" data-offset-type="${type}" aria-label="${title}, pixels exacts"/></div></div>`;
+ };
+ panel.innerHTML=`<div class="paddle-calibration-panel"><p class="eyebrow">CALAGE VISUEL · PIXELS NATIFS</p><h2>RAQUETTES</h2><p class="sub">Les cercles verts ne bougent pas. Valeur positive = dessin plus bas. Réglage immédiat et sauvegardé.</p>${field('player','Raquette bleue')}${field('ai','Raquette adverse')}<div class="paddle-calibration-actions">${btn('RÉINITIALISER','calibration-reset')}${btn('RETOUR PAUSE','calibration-done')}${btn('REPRENDRE','resume',true)}</div></div>`;
+ document.exitPointerLock?.();
+}
+function storePaddleOffsets(){
+ for(const type of ['player','ai']){
+  try{localStorage.setItem('synthpuck.spriteOffset.'+type,String(paddleOffsets[type]));}catch{}
+ }
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
@@ -86,7 +110,7 @@ function showPause(reason='DUEL EN PAUSE'){
   const levels=mode==='arcade'
     ? `<div class="pause-levels"><p class="eyebrow">CHOISIR UN NIVEAU · NOUVEAU DUEL</p><div class="pause-level-grid" role="group" aria-label="Niveaux Arcade">${ROSTER.map((fighter,index)=>`<button type="button" class="pause-level ${index===level?'current':''}" data-pause-level="${index}" aria-label="Niveau ${String(index+1).padStart(2,'0')} : ${fighter.name}" ${index===level?'aria-current="step"':''}><span>${String(index+1).padStart(2,'0')}</span><strong>${fighter.name}</strong></button>`).join('')}</div></div>`
     : ``;
-  panel.innerHTML=`<div class="compact-center pause-center"><p class="eyebrow">SYNTHPUCK</p><h2>${reason}</h2><p class="sub">${opponent.name} · ${mode==='arcade'?'ARCADE':'ENTRAÎNEMENT'}</p>${levels}<div class="pause-actions">${btn('REPRENDRE','resume',true)}${btn('RECOMMENCER','retry')}${btn('RETOUR AU MENU','menu')}</div></div>`;
+  panel.innerHTML=`<div class="compact-center pause-center"><p class="eyebrow">SYNTHPUCK</p><h2>${reason}</h2><p class="sub">${opponent.name} · ${mode==='arcade'?'ARCADE':'ENTRAÎNEMENT'}</p>${levels}<div class="pause-actions">${btn('REPRENDRE','resume',true)}${btn('CALER LES RAQUETTES','calibration')}${btn('RECOMMENCER','retry')}${btn('RETOUR AU MENU','menu')}</div></div>`;
   document.exitPointerLock?.();
 }
 function logButton(){return mode==='arcade'&&match?.roundLog?btn('TÉLÉCHARGER LE LOG','downloadLog'):'';}
@@ -150,6 +174,9 @@ function buttonAction(action){
   else if(action==='account'){$('accountLauncher').click();}
   else if(action==='save-options'){const range=$('sensitivityRange');if(range){mouseSensitivity=clamp(Number(range.value)||1,.4,2.4);try{localStorage.setItem('synthpuck.mouseSensitivity',String(mouseSensitivity));}catch{}showOptions('Sensibilité enregistrée.');}}
   else if(action==='host'||action==='join'){connectMultiplayer(action);}
+  else if(action==='calibration'){showCalibration();}
+  else if(action==='calibration-done'){showPause('CALAGE ENREGISTRÉ');}
+  else if(action==='calibration-reset'){Object.assign(paddleOffsets,DEFAULT_PADDLE_OFFSETS);storePaddleOffsets();showCalibration();}
   else if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
   else if(action==='arcade'){level=0;mode='arcade';showArcadeIntro();}
   else if(action==='training'){mode='training';showTrainingSelect();}
@@ -161,6 +188,20 @@ function buttonAction(action){
     if(result.type==='next'){level=result.index;showArcadeIntro();}
   }
 }
+panel.addEventListener('input',event=>{
+ if(screen!=='calibration')return;
+ const el=event.target,type=el?.dataset?.offsetType;
+ if(type!=='player'&&type!=='ai')return;
+ if(el.type==='number'&&el.value==='')return;
+ const value=normalizePaddleOffset(el.value,paddleOffsets[type]);
+ paddleOffsets[type]=value;
+ storePaddleOffsets();
+ for(const input of panel.querySelectorAll('[data-offset-type="'+type+'"]')){
+  if(input!==el)input.value=String(value);
+ }
+ const label=$('offset-label-'+type);
+ if(label)label.textContent=(value>0?'+':'')+value+' px';
+});
 panel.addEventListener('click',event=>{
   const button=event.target.closest('button');if(!button || button.disabled)return;
   if(button.dataset.pauseLevel!==undefined){
@@ -295,7 +336,9 @@ function spriteGeometry(obj,type){
  // This is a visual-only correction; the physics position never changes.
  const frontRailY=project(obj.x,-match.cfg.length/2).y;
  y=Math.min(y,frontRailY+2*layout.scale-height*sprite.inkBottom);
- return {x:p.x-width/2,y,width,height};
+ // Apply the exact native-pixel translation AFTER the bumper guard.
+ // Positive values always move the image down, even at the near rail.
+ return {x:p.x-width/2,y:offsetSpriteY(y,type,layout.scale,paddleOffsets),width,height};
 }
 function drawCollisionBody(obj,type){
  const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
@@ -546,7 +589,7 @@ function frame(time){
     else if(match.state==='ready'){showPoint();}
   }
   if(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth && !frame.stageReady){drawBackdrop();frame.stageReady=true;}
-  if(screen==='playing'||screen==='pause'||screen==='point'||screen==='result'){drawActors(dt);updateHud();}
+  if(screen==='playing'||screen==='pause'||screen==='calibration'||screen==='point'||screen==='result'){drawActors(dt);updateHud();}
 }
 function setBackground(stage,withOpponent){
   currentStage=stage;showFarOpponent=withOpponent;ctx.clearRect(0,0,layout.cssW,layout.cssH);frame.stageReady=false;
@@ -602,6 +645,7 @@ window.__synthpuck=Object.freeze({
     halEyeReady:Boolean(images.halEye?.complete&&images.halEye.naturalWidth),
     halEyePosition:currentStage===HAL_STAGE_ID?{...halGaze}:null,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
+    paddleOffsets:{...paddleOffsets},
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),
   project:(x,z)=>match?project(x,z):null,

@@ -152,6 +152,8 @@ try{
      type,z,center:__synthpuck.project(0,z),sprite:__synthpuck.spriteGeometry(type,0,z)
    }))),
    nearRail:__synthpuck.project(0,-5).y,
+   offsets:__synthpuck.snapshot().paddleOffsets,
+   scale:__synthpuck.snapshot().arenaFrame.width/1672,
    nearCases:[
      {type:'player',z:-4.56},{type:'puck',z:-4.83}
    ].map(({type,z})=>({type,z,box:__synthpuck.spriteGeometry(type,0,z)}))
@@ -159,12 +161,14 @@ try{
  for(const entry of contact.cases){
    const art=SPRITE_ART[entry.type],g=entry.sprite,p=entry.center;
    close(g.x+g.width/2,p.x,entry.type+' contact X');
-   close(g.y+g.height*art.anchor,p.y,entry.type+' contact Y');
+   const shifted=entry.type==='puck'?0:contact.offsets[entry.type]*contact.scale;
+   close(g.y+g.height*art.anchor,p.y+shifted,entry.type+' configured visual Y');
  }
  for(const entry of contact.nearCases){
    const art=SPRITE_ART[entry.type],g=entry.box;
-   assert.ok(g.y+g.height*art.inkBottom<=contact.nearRail+2.015,
-     entry.type+' painted rim must stay behind the front bumper');
+   const shift=entry.type==='puck'?0:contact.offsets[entry.type]*contact.scale;
+   assert.ok(g.y+g.height*art.inkBottom<=contact.nearRail+2.015+shift,
+     entry.type+' visual foot must respect the front bumper plus chosen offset');
  }
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
   assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
@@ -178,6 +182,48 @@ try{
  assert.equal(await page.locator('[data-pause-level]').count(),7,'Pause offers all seven Arcade stages');
  assert.equal(await page.locator('[data-pause-level="0"]').getAttribute('aria-current'),'step','Current stage is highlighted');
  await page.screenshot({path:'synthpuck-pause-levels-preview.png'});
+ // Calibration must be adjustable at an exact native-pixel offset with the
+ // collision centres and puck completely unchanged.
+ await page.getByRole('button',{name:'CALER LES RAQUETTES'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='calibration');
+ const beforeOffsets=await page.evaluate(()=>({
+  offsets:__synthpuck.snapshot().paddleOffsets,
+  player:__synthpuck.spriteGeometry('player',0,-3.8),
+  ai:__synthpuck.spriteGeometry('ai',0,3.8),
+  puck:__synthpuck.spriteGeometry('puck',0,0),
+  collision:__synthpuck.project(0,-3.8),
+  scale:__synthpuck.snapshot().arenaFrame.width/1672
+ }));
+ assert.equal(beforeOffsets.offsets.player,12);
+ assert.equal(beforeOffsets.offsets.ai,12);
+ await page.locator('#offset-number-player').fill('22');
+ await page.locator('#offset-number-ai').fill('31');
+ await page.waitForFunction(()=>{
+  const p=__synthpuck.snapshot().paddleOffsets;
+  return p.player===22&&p.ai===31;
+ });
+ const afterOffsets=await page.evaluate(()=>({
+  player:__synthpuck.spriteGeometry('player',0,-3.8),
+  ai:__synthpuck.spriteGeometry('ai',0,3.8),
+  puck:__synthpuck.spriteGeometry('puck',0,0),
+  collision:__synthpuck.project(0,-3.8),
+  savedPlayer:localStorage.getItem('synthpuck.spriteOffset.player'),
+  savedAi:localStorage.getItem('synthpuck.spriteOffset.ai'),
+  playerLabel:document.querySelector('#offset-label-player').textContent,
+  aiLabel:document.querySelector('#offset-label-ai').textContent
+ }));
+ assert.ok(Math.abs(afterOffsets.player.y-beforeOffsets.player.y-10*beforeOffsets.scale)<.0001,
+  'Player sprite must descend EXACTLY 10 additional native pixels');
+ assert.ok(Math.abs(afterOffsets.ai.y-beforeOffsets.ai.y-19*beforeOffsets.scale)<.0001,
+  'AI sprite must descend EXACTLY 19 additional native pixels');
+ assert.deepEqual(afterOffsets.puck,beforeOffsets.puck,'Puck remains unaffected by paddle calibration');
+ assert.deepEqual(afterOffsets.collision,beforeOffsets.collision,'Physics projection remains fixed');
+ assert.equal(afterOffsets.savedPlayer,'22');
+ assert.equal(afterOffsets.savedAi,'31');
+ assert.equal(afterOffsets.playerLabel,'+22 px');
+ assert.equal(afterOffsets.aiLabel,'+31 px');
+ await page.getByRole('button',{name:'RETOUR PAUSE'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mamouda');
  const jumped=await page.evaluate(()=>__synthpuck.snapshot());
