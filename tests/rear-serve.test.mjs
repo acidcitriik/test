@@ -19,22 +19,21 @@ function simulateBehind({x,z,vx=0,vz=0,aiZ=2.25}, seconds=4) {
   return {m,impacts,rearBounce};
 }
 
-test('first point is served from a stationary puck on the player side',()=>{
+test('opening duel starts with a stationary neutral puck at the centre',()=>{
   const m=new Match();
-  assert.equal(m.server,-1);
+  assert.equal(m.server,0);
   m.serve();
   assert.equal(m.awaitingServe,true);
-  assert.equal(m.puck.z,-2.35);
+  assert.equal(m.puck.z,0);
   assert.equal(m.puck.vx,0);assert.equal(m.puck.vz,0);
-  for(let i=0;i<240;i++)m.tick();
-  assert.equal(m.puck.x,0);assert.equal(m.puck.z,-2.35);
-  assert.equal(m.puck.vx,0);assert.equal(m.puck.vz,0);
-  assert.equal(m.awaitingServe,true);
+  for(let i=0;i<240 && m.awaitingServe;i++)m.tick();
+  assert.equal(m.awaitingServe,false,'AI should physically contest the central puck');
+  assert.ok(m.events.some(e=>e.type==='serve'&&e.by==='ai'));
   assert.equal(m.scores[0]+m.scores[1],0);
 });
 
 test('player must hit the stationary puck to engage, no artificial velocity',()=>{
-  const m=new Match();m.serve();m.target.z=-1.6;
+  const m=new Match();m.serve();m.target.z=-.22;
   for(let i=0;i<360&&m.awaitingServe;i++)m.tick();
   assert.equal(m.awaitingServe,false,'player should physically reach the puck');
   assert.ok(m.events.some(e=>e.type==='serve'&&e.by==='player'));
