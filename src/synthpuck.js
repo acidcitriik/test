@@ -9,6 +9,7 @@ import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
 import {TABLE_CALIBRATION,createTableProjection} from './table-projection.js';
+import {GREEN_DEBUG_OVERLAY} from './green-debug-overlay.js';
 import {DEFAULT_PADDLE_OFFSETS,normalizePaddleOffset,offsetSpriteY,OFFSET_MIN,OFFSET_MAX} from './paddle-offset.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
 
@@ -345,7 +346,8 @@ function spriteGeometry(obj,type){
 function drawCollisionBody(obj,type){
  const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
  ctx.save();
- ctx.fillStyle='#16e65b66';ctx.strokeStyle='#39ff75';
+ ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];
+ ctx.strokeStyle=GREEN_DEBUG_OVERLAY.colliderOutline;
  ctx.lineWidth=2*layout.scale;
  ctx.beginPath();
  for(let i=0;i<=64;i++){
@@ -357,7 +359,8 @@ function drawCollisionBody(obj,type){
  const center=project(obj.x,obj.z);
  const tip=project(obj.x+Math.cos(obj.angle??0)*radius*.85,obj.z+Math.sin(obj.angle??0)*radius*.85);
  ctx.beginPath();ctx.moveTo(center.x,center.y);ctx.lineTo(tip.x,tip.y);ctx.stroke();
- ctx.beginPath();ctx.arc(center.x,center.y,2.5*layout.scale,0,Math.PI*2);ctx.fillStyle='#39ff75';ctx.fill();
+ ctx.beginPath();ctx.arc(center.x,center.y,2.5*layout.scale,0,Math.PI*2);
+ ctx.fillStyle=GREEN_DEBUG_OVERLAY.colliderIndicator;ctx.fill();
  ctx.restore();
 }
 function drawSmashEffect(obj){
@@ -396,7 +399,7 @@ function drawObject(obj,type){
  }else{
   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg[type==='puck'?'puckRadius':'paddleRadius']);
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
-  ctx.fillStyle='#16e65b44';ctx.fill();
+  ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];ctx.fill();
  }
  drawCollisionBody(obj,type);
  if(type==='puck' && obj.smashActive)drawSmashEffect(obj);
@@ -423,7 +426,7 @@ function drawPhysicalTableWalls(){
   const {width,length,goalWidth}=match.cfg;
   const halfW=width/2,halfL=length/2,halfGoal=goalWidth/2;
   ctx.save();
-  ctx.strokeStyle='#B4FF88';
+  ctx.strokeStyle=GREEN_DEBUG_OVERLAY.tableRails;
   ctx.lineWidth=Math.max(2,4*layout.scale);
   ctx.lineCap='round';
   ctx.lineJoin='round';
