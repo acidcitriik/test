@@ -351,6 +351,42 @@ try{
   assert.ok(points.every(p=>p.x>=0&&p.x<=viewport.width&&p.y>=0&&p.y<=viewport.height),
    `Table must be fully framed at ${viewport.width}x${viewport.height}: ${JSON.stringify(points)}`);
  }
+ // Confirm DPR 3 only changes raster resolution, not native coordinates.
+ const retinaContext=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:3});
+ await retinaContext.addInitScript(()=>{
+   localStorage.setItem('synthpuck.spriteOffset.player','-4');
+   localStorage.setItem('synthpuck.spriteOffset.ai','-1');
+ });
+ const retina=await retinaContext.newPage();
+ await retina.goto(base+'?skipSplash=1',{waitUntil:'domcontentloaded'});
+ await retina.waitForFunction(()=>__synthpuck.snapshot().screen==='menu');
+ await retina.getByRole('button',{name:'ENTRAÎNEMENT'}).click();
+ await retina.getByRole('button',{name:'COMMENCER L’ENTRAÎNEMENT'}).click();
+ await retina.waitForFunction(()=>__synthpuck.snapshot().ready);
+ const hidpi=await retina.evaluate(()=>{
+   const api=__synthpuck,s=api.snapshot(),scale=s.arenaFrame.width/1672;
+   const norm=p=>({
+     x:(p.x-s.arenaFrame.left)/scale,
+     y:(p.y-s.arenaFrame.top)/scale,
+     ...(p.width===undefined?{}:{width:p.width/scale,height:p.height/scale})
+   });
+   return {dpr:devicePixelRatio,backingWidth:document.querySelector('#arena').width,
+     offsets:s.paddleOffsets,
+     objects:[['player',0,-3.8],['player',2,-4.5],
+       ['ai',0,3.8],['ai',-2,4.5],['puck',.5,0]]
+       .map(([type,x,z])=>({
+         type,point:norm(api.project(x,z)),sprite:norm(api.spriteGeometry(type,x,z))
+       }))
+   };
+ });
+ assert.equal(hidpi.dpr,3,'Retina check uses DPR 3');
+ assert.equal(hidpi.backingWidth,780,'Retina backing canvas is capped at DPR 2');
+ assert.deepEqual(hidpi.offsets,baseline.offsets,'Device density preserves stored offsets');
+ for(let i=0;i<hidpi.objects.length;i++){
+   compare(hidpi.objects[i].point,baseline.objects[i].point,'DPR 3 collider');
+   compare(hidpi.objects[i].sprite,baseline.objects[i].sprite,'DPR 3 sprite');
+ }
+ await retinaContext.close();
  const assets=await page.evaluate(async()=>{
   const ids=['mute','chonk','simous','mamouda','diamond','stal','2502','training'];
   const load=src=>new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve([image.naturalWidth,image.naturalHeight]);image.onerror=reject;image.src=src;});
