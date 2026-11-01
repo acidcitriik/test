@@ -4,7 +4,7 @@ import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=ai-smash-20261101-8';
 import {Match,clamp,magnitude} from './physics.js?v=palet-rules-20261101-1';
-import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
+import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js?v=sprite-contact-20261101-1';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
