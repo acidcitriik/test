@@ -138,6 +138,15 @@ for(const type of ['keydown','keyup','keypress','pointerdown','pointerup',
   'mousedown','mouseup','touchstart','touchmove','touchend','wheel']){
   overlay.addEventListener(type,event=>event.stopPropagation());
 }
+overlay.addEventListener('keydown',event=>{
+  if(event.key!=='Tab')return;
+  const items=[...overlay.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]')]
+    .filter(item=>item.getClientRects().length);
+  if(!items.length)return;
+  const first=items[0],last=items[items.length-1];
+  if(event.shiftKey && document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
+});
 overlay.addEventListener('click',event=>{
   if(event.target===overlay){closeAccount();return;}
   const control=event.target.closest('[data-account-action]');
