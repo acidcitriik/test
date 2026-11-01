@@ -195,7 +195,7 @@ function sync(){
   puckObj.rotation.y+=match.puck.spin*.0015;
   document.getElementById('score').textContent=match.scores.join(' : ');
   document.getElementById('hint').textContent=match.awaitingServe
-    ? (match.server===-1 ? 'À TOI D’ENGAGER · FRAPPE LE PALET' : 'ENGAGEMENT DE L’IA · PRÉPARE-TOI')
+    ? (match.server===0 ? 'PALET AU CENTRE · PREMIER CONTACT' : match.server===-1 ? 'À TOI D’ENGAGER · 10 S' : 'ENGAGEMENT DE L’IA · 10 S')
     : 'PREMIER À 7 · PHYSICS LAB';
   document.getElementById('puckSpeed').textContent=magnitude(match.puck.vx,match.puck.vz).toFixed(1)+' m/s';
   document.getElementById('paddleSpeed').textContent=magnitude(match.player.vx,match.player.vz).toFixed(1)+' m/s';
@@ -245,5 +245,5 @@ function resize(){
   renderer.setSize(width,height,false);
 }
 addEventListener('resize',resize);resize();
-function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal');show(last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA','Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();stageFx?.update(ms/1000);illustratedFx?.update(ms/1000,active);if(!illustratedFx)renderer.render(scene,camera);}
+function frame(ms){requestAnimationFrame(frame);const dt=lastTime?Math.min(.05,(ms-lastTime)/1000):0;lastTime=ms;if(active){acc+=dt;let steps=0;while(acc>=match.cfg.tick&&steps<8){match.tick();acc-=match.cfg.tick;steps++;}if(steps>=8)acc=0;if(match.state==='ready'){const last=match.events.findLast(e=>e.type==='goal'||e.type==='timeout');show(last?.type==='timeout'?'DÉLAI DÉPASSÉ':last?.scorer===0?'POINT POUR TOI':'POINT POUR L’IA',last?.type==='timeout'?'L’adversaire engage, sans point supplémentaire.':'Le prochain serveur doit frapper le palet immobile.','CONTINUER');}if(match.state==='over')show(match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE','Match terminé. Rejoue pour travailler les trajectoires.','REJOUER');}sync();stageFx?.update(ms/1000);illustratedFx?.update(ms/1000,active);if(!illustratedFx)renderer.render(scene,camera);}
 requestAnimationFrame(frame);
