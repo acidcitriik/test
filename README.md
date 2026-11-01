@@ -63,25 +63,19 @@ Le jeu solo local reste accessible sans connexion. Le multijoueur expérimental 
 - Score et plaques HUD ancrés à la zone de la scène 1672 × 941 (et non aux bandes noires du viewport), libellés intégrés dans les panneaux, nom d’adversaire redondant masqué.
 - Vérifications visuelles automatisées à 1672 × 941 et 1780 × 800, plus six captures individuelles des adversaires.
 
-## Multijoueur 1v1 dans le navigateur
+## Online · multijoueur 1v1 dans le navigateur
 
-Depuis le site, choisir MULTIJOUEUR puis CRÉER UNE PARTIE. Copier le code affiché et le transmettre à son ami. Celui-ci ouvre le même site, colle le code puis choisit REJOINDRE. Aucun programme ni serveur local à démarrer.
+Le menu affiche désormais **ARCADE · ENTRAÎNEMENT · ONLINE**, puis **OPTIONS · DÉCONNEXION** sur une deuxième ligne.
 
-Le navigateur du créateur calcule la physique à pas fixe 120 Hz et transmet les états à 60 Hz via WebRTC. Garder son onglet ouvert et visible ; les navigateurs peuvent ralentir les onglets en arrière-plan. Chaque joueur voit sa raquette en bas. Premier à 7, engagement après 1,5 seconde suivant un but.
+Dans **ONLINE**, les utilisateurs connectés apparaissent dans la liste avec leurs pseudos et états de disponibilité. Clique sur un adversaire pour l'inviter ; il n'a qu'à choisir **ACCEPTER** pour rejoindre la partie WebRTC. Il peut aussi la refuser. Les invitations expirent automatiquement. Les parties restent indépendantes et hébergées dans le navigateur du créateur.
 
-PeerJS Cloud assure la mise en relation ; les données de jeu passent directement entre les navigateurs. Une connexion Internet est nécessaire. Certains réseaux (NAT symétrique, réseaux professionnels) nécessitent un relais TURN, non fourni dans cette version. Aucune garantie de connexion sur ces réseaux. Pas de reconnexion ni compensation avancée de latence. Quitter ferme la partie.
+Les invités peuvent toujours créer une partie et partager manuellement son code. Aucune inscription n'est exigée pour utiliser ce parcours. Le navigateur du créateur calcule la physique à pas fixe 120 Hz et transmet les états à 60 Hz via PeerJS/WebRTC. Il faut garder l'onglet visible et ouvert ; le multijoueur n'inclut pas encore de reconnexion ou compensation avancée de latence.
 
-La bibliothèque PeerJS est distribuée localement dans src/vendor avec sa licence. Le serveur Node optionnel reste disponible avec npm start pour le développement local.
+**Relais TURN Cloudflare :** plus aucun code privé à saisir. Les joueurs connectés obtiennent des identifiants temporaires en passant par le Worker authentifié avec leur jeton de session Supabase. Les secrets TURN durables sont gardés côté Worker. Les invités utilisent les serveurs STUN/ICE publics existants et certains réseaux restrictifs peuvent empêcher leur connexion.
 
-Tests : npm test. Le test tests/multiplayer-browser.mjs utilise deux navigateurs Edge, le site local sur le port 3000 et le service PeerJS réel.
+**Configuration indispensable :** la liste des joueurs et les invitations nécessitent la migration Supabase + l'activation Auth. Le relais TURN automatique nécessite le redéploiement du Worker Cloudflare. Rien de cela n'est automatiquement déployé par un push GitHub Pages.
 
-### Relais Cloudflare pour les essais privés
-
-Le jeu demande maintenant un code privé de relais, conservé uniquement dans sessionStorage. Ce code est partagé entre les deux testeurs ; il ne s’agit pas de la clé API Cloudflare. Le Worker https://synthpuck-turn.acidcitriik.workers.dev génère des accès TURN valables deux heures. Sa clé API reste dans un secret Cloudflare. Les parties de plus de deux heures nécessitent une nouvelle connexion.
-
-Le code du Worker est dans cloudflare/turn-worker.js. Secrets à configurer dans Cloudflare : TURN_KEY_ID, TURN_API_TOKEN, RELAY_ACCESS_CODE. Aucun de ces secrets ne doit être commité. L’origine autorisée est https://acidcitriik.github.io. Le code privé protège l’accès aux identifiants temporaires ; CORS seul ne protège pas le quota. Ce mécanisme est prévu pour des tests privés, pas pour un lancement public.
-
-Test réel : définir SYNTHPUCK_RELAY_ACCESS dans l’environnement puis lancer node tests/cloudflare-relay.mjs, avec le serveur local actif. Le test impose TURN en TLS sur le port 443 et vérifie le refus d’un mauvais code.
+Voir **[docs/ONLINE_LOBBY.md](docs/ONLINE_LOBBY.md)** pour les étapes d'activation, la sécurité et le test à quatre joueurs. Le serveur Node optionnel reste utilisable avec `npm start` pour le développement.
 
 
 ## Comptes joueurs (Google, e-mail et profil)
