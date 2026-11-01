@@ -259,3 +259,4 @@ try{
  await page.close();
  console.log('SYNTHPUCK browser verified: logo/title/menu, 7 portraits/stats/AI, arcade, training, physics projection, pause, assets.');
 } finally {if(browser)await browser.close();await new Promise(resolve=>server.close(resolve));}
+
