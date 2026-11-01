@@ -60,7 +60,7 @@ function showMenu(){
 }
 function showOptions(message='Régle tes commandes avant de jouer.'){
   setScreen('options');hud.hidden=true;touchBar.hidden=true;
-  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
+  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause.</p><p class="sub">Règles du temps palet : premier engagement au centre · 10 s pour servir après un but · 7 s pour renvoyer le palet dans le camp adverse. Dépassement : engagement adverse, aucun point.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
