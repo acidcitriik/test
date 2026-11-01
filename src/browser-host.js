@@ -1,7 +1,7 @@
 import {iceConfiguration} from './ice-config.js';
 import {ConnectionDebug} from './connection-debug.js';
 import './vendor/peerjs.min.js';
-import {Match,clamp} from './physics.js?v=ai-smash-20261101-8';
+import {Match,clamp} from './physics.js?v=palet-rules-20261101-1';
 
 // Socket-shaped adapter: game simulation lives exclusively in the host browser.
 export class BrowserHost {
@@ -24,7 +24,7 @@ export class BrowserHost {
       this.timer=setInterval(()=>{const now=performance.now(),dt=Math.min(.1,(now-last)/1000);last=now;acc+=dt;broadcast+=dt;const m=this.match;
         while(acc>=m.cfg.tick){m.tick();acc-=m.cfg.tick;}
         if(m.state==='ready'){nextServe ||= now+1500;if(now>=nextServe){m.serve();m.remoteTarget={x:0,z:-3.8};nextServe=0;}}
-        if(broadcast>=1/60){broadcast=0;const d={type:'state',player:m.player,ai:m.ai,puck:m.puck,scores:m.scores,state:m.state,server:m.server,awaitingServe:m.awaitingServe};this.emit(d);if(c.open&&c.dataChannel.bufferedAmount<65536)c.send(d);}
+        if(broadcast>=1/60){broadcast=0;const d={type:'state',player:m.player,ai:m.ai,puck:m.puck,scores:m.scores,state:m.state,server:m.server,awaitingServe:m.awaitingServe,time:m.time,serveStartedAt:m.serveStartedAt,possessionSide:m.possessionSide,possessionSince:m.possessionSince};this.emit(d);if(c.open&&c.dataChannel.bufferedAmount<65536)c.send(d);}
       },4);
     });
   }
