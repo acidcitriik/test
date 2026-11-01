@@ -122,11 +122,21 @@ try{
    puck:api.spriteGeometry('puck',0,0)};
  });
  assert.deepEqual(calibrated.table.near,{y:816,left:200,right:1475});
- assert.deepEqual(calibrated.table.far,{y:390,left:680,right:992});
+ assert.deepEqual(calibrated.table.far,{y:400,left:670,right:1002});
  assert.deepEqual(calibrated.table.center,{y:554,left:475,right:1201});
  assert.ok(Math.abs(calibrated.middle.y-554)<1,'Puck center follows painted midline');
- assert.ok(calibrated.far.every(p=>p.y===390),'Invisible back rail stays on painted far edge');
- assert.ok(calibrated.near.every(p=>p.y===816),'Invisible near rail stays on painted near edge');
+ assert.deepEqual(calibrated.far,[{x:670,y:400},{x:1002,y:400}],
+   'Only the far physical rail must fit the painted back lip');
+ assert.deepEqual(calibrated.near,[{x:200,y:816},{x:1475,y:816}],
+   'Already correct physical front rail must remain pixel-identical');
+ const rearCurve=await page.evaluate(()=>[4.75,3.75,2.5,0,-2.5,-5].map(z=>{
+   const x=__synthpuck.project(2.9,z);
+   const y=__synthpuck.project(-2.9,z);
+   return {z,left:x.x,right:y.x,height:x.y,symmetricHeight:y.y};
+ }));
+ assert.ok(rearCurve.every(p=>p.left<p.right&&p.height===p.symmetricHeight),'Projected rail stays planar');
+ assert.ok(rearCurve.every((p,i)=>i===0||p.height>rearCurve[i-1].height),
+   'Perspective is monotonic toward the viewer');
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
   assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
   assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
