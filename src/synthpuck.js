@@ -4,7 +4,7 @@ import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=ai-smash-20261101-8';
 import {Match,clamp,magnitude} from './physics.js?v=palet-rules-20261101-1';
-import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
+import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js?v=sprite-contact-20261101-1';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
 import {ROSTER,STAT_NAMES,getCharacter,matchConfiguration} from './roster.js';
@@ -284,9 +284,18 @@ function spriteGeometry(obj,type){
  const sprite=spriteArt[type],img=images.sprites[type];
  const sourceWidth=img?.naturalWidth || (type==='ai'?672:type==='player'?674:549);
  const sourceHeight=img?.naturalHeight || (type==='puck'?361:482);
+ // Size the PAINTED contact disk to the projected physical disk, not
+ // the outer transparent canvas. Its painted contact ellipse must sit on
+ // the projected x/z collision centre.
  const width=2*rx*.98*sourceWidth/sprite.inkWidth;
  const height=width*sourceHeight/sourceWidth;
- return {x:p.x-width/2,y:p.y-height*sprite.anchor,width,height};
+ let y=p.y-height*sprite.anchor;
+ // Keep the visible bottom of a close-up sprite above the painted front
+ // bumper (which previously exposed/cropped the base near the player).
+ // This is a visual-only correction; the physics position never changes.
+ const frontRailY=project(obj.x,-match.cfg.length/2).y;
+ y=Math.min(y,frontRailY+2*layout.scale-height*sprite.inkBottom);
+ return {x:p.x-width/2,y,width,height};
 }
 function drawCollisionBody(obj,type){
  const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];

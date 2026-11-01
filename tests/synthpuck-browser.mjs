@@ -3,6 +3,7 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {resolve,extname,sep} from 'node:path';
 import {chromium} from 'playwright';
+import {SPRITE_ART} from '../src/synthpuck-sprite-art.js';
 const root=resolve(import.meta.dirname,'..');
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.webp':'image/webp','.avif':'image/avif','.png':'image/png','.svg':'image/svg+xml'};
 const server=http.createServer(async(req,res)=>{
@@ -122,14 +123,14 @@ try{
    puck:api.spriteGeometry('puck',0,0)};
  });
  assert.deepEqual(calibrated.table.near,{y:816,left:200,right:1475});
- assert.deepEqual(calibrated.table.far,{y:405,left:640,right:1032});
+ assert.deepEqual(calibrated.table.far,{y:405,left:632,right:1040});
  assert.deepEqual(calibrated.table.center,{y:554,left:475,right:1201});
  const close=(value,expected,label)=>assert.ok(Math.abs(value-expected)<.015,
    label+' expected '+expected+', got '+value);
  close(calibrated.middle.y,554,'Center line preserved');
  for(const [name,actual,expected] of [
-   ['Far left',calibrated.far[0],[640,405]],
-   ['Far right',calibrated.far[1],[1032,405]],
+   ['Far left',calibrated.far[0],[632,405]],
+   ['Far right',calibrated.far[1],[1040,405]],
    ['Near left',calibrated.near[0],[200,816]],
    ['Near right',calibrated.near[1],[1475,816]]
  ]){ close(actual.x,expected[0],name+' X');close(actual.y,expected[1],name+' Y'); }
@@ -144,6 +145,27 @@ try{
  assert.ok(rearCurve.every(p=>p.left<p.right&&Math.abs(p.height-p.symmetricHeight)<.015),'Projected rail stays planar');
  assert.ok(rearCurve.every((p,i)=>i===0||p.height>rearCurve[i-1].height),
    'Perspective is monotonic toward the viewer');
+ // A sprite's painted contact disk must agree with the projected collider,
+ // independent of whether its head/upper surface extends above the table.
+ const contact=await page.evaluate(()=>({
+   cases:['player','puck','ai'].flatMap(type=>[-3.8,0,3.8].map(z=>({
+     type,z,center:__synthpuck.project(0,z),sprite:__synthpuck.spriteGeometry(type,0,z)
+   }))),
+   nearRail:__synthpuck.project(0,-5).y,
+   nearCases:[
+     {type:'player',z:-4.56},{type:'puck',z:-4.83}
+   ].map(({type,z})=>({type,z,box:__synthpuck.spriteGeometry(type,0,z)}))
+ }));
+ for(const entry of contact.cases){
+   const art=SPRITE_ART[entry.type],g=entry.sprite,p=entry.center;
+   close(g.x+g.width/2,p.x,entry.type+' contact X');
+   close(g.y+g.height*art.anchor,p.y,entry.type+' contact Y');
+ }
+ for(const entry of contact.nearCases){
+   const art=SPRITE_ART[entry.type],g=entry.box;
+   assert.ok(g.y+g.height*art.inkBottom<=contact.nearRail+2.015,
+     entry.type+' painted rim must stay behind the front bumper');
+ }
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
   assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
   assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');

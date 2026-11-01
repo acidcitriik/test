@@ -10,7 +10,7 @@ const close=(actual,expected,label,tolerance=1e-6)=>{
 const projection=createTableProjection(5.8,10);
 const project=projection.project;
 const corners=[
-  [2.9,5,640,405],[-2.9,5,1032,405],
+  [2.9,5,632,405],[-2.9,5,1040,405],
   [2.9,0,475,554],[-2.9,0,1201,554],
   [2.9,-5,200,816],[-2.9,-5,1475,816]
 ];
@@ -19,6 +19,19 @@ test('four measured artwork corners map onto original HAL table',()=>{
  for(const [x,z,px,py] of corners.filter(c=>c[1]!==0)){
   const p=project(x,z);close(p.x,px,'corner X');close(p.y,py,'corner Y');
  }
+});
+test('small widening at the far rail does not move the already validated near or centre',()=>{
+  const widened=createTableProjection(5.8,10);
+  const previous=createTableProjection(5.8,10,{
+    ...TABLE_CALIBRATION,far:{y:405,left:640,right:1032}
+  });
+  for (const z of [-5,0])for (const x of [-2.9,0,2.9]){
+    const a=widened.project(x,z),b=previous.project(x,z);
+    close(a.x,b.x,'unchanged near/centre X');
+    close(a.y,b.y,'unchanged near/centre Y');
+  }
+  close(widened.project(2.9,5).x,previous.project(2.9,5).x-8,'far left widened');
+  close(widened.project(-2.9,5).x,previous.project(-2.9,5).x+8,'far right widened');
 });
 test('artistic centre line matches as well without moving either end',()=>{
  for(const [x,z,px,py] of corners.filter(c=>c[1]===0)){
