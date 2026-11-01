@@ -2,5 +2,5 @@
 // Setup: docs/PLAYER_ACCOUNTS.md
 export const PLAYER_AUTH_CONFIG=Object.freeze({
   supabaseUrl:'https://mecpxblaozaojvxqapyn.supabase.co',
-  supabasePublishableKey:''
+  supabasePublishableKey:'sb_publishable_GmGGyF7RuvqUJXQGkrVO7g_Yg4fVSXQ'
 });
