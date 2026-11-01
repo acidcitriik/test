@@ -1,4 +1,7 @@
-import {cloudflareConfiguration} from './ice-config.js';
+import {cloudflareConfiguration,iceConfiguration} from './ice-config.js';
+import {playerAuth} from './player-auth.js';
+import {OnlineDirectory} from './online-directory.js';
+import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=stroke-20261101-2';
 import {Match,clamp,magnitude} from './physics.js?v=stroke-20261101-2';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
@@ -24,6 +27,9 @@ let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
 let lastTouch={x:0,y:0},inputMode='normal',pointerRequested=false;
 let layout={scale:1,x:0,y:0,cssW:1,cssH:1,dpr:1};
 let pausedReason='',showFarOpponent=false;
+const online=new OnlineDirectory(()=>renderOnlineSections(online,!!playerAuth.snapshot().user));
+online.onAccepted=()=>{if(screen==='lobby'&&$('lobbyStatus'))$('lobbyStatus').textContent='Invitation acceptée : connexion au duel en cours…';};
+try{const stored=Number(localStorage.getItem('synthpuck.mouseSensitivity'));if(stored>=.4&&stored<=2.4)mouseSensitivity=stored;}catch{}
 const isTouch=()=>navigator.maxTouchPoints>0 || matchMedia('(pointer:coarse)').matches;
 
 const statBar=(value,accent)=>`<div class="meter" style="--accent:${accent}">${Array.from({length:5},(_,i)=>`<i class="${i<value?'on':''}"></i>`).join('')}</div>`;
@@ -34,10 +40,14 @@ const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
-  stopNetwork();if($('connectionDebug'))$('connectionDebug').hidden=true;
+  stopNetwork();online.stop();if($('connectionDebug'))$('connectionDebug').hidden=true;
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
-  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('MULTIJOUEUR','multi')}<button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
+  panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu-main-buttons" aria-label="Modes de jeu">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('ONLINE','online')}</nav><nav class="menu-secondary-buttons" aria-label="Compte et réglages">${btn('OPTIONS','options')}${btn('DÉCONNEXION','logout')}</nav></div>`;
+}
+function showOptions(message='Régle tes commandes avant de jouer.'){
+  setScreen('options');hud.hidden=true;touchBar.hidden=true;
+  panel.innerHTML='<div class="page options-page"><header class="page-head"><div><p class="eyebrow">SYNTHPUCK / PERSONNALISATION</p><h2>OPTIONS</h2></div>'+btn('← MENU','menu')+'</header><div class="online-panel"><h3>CONTRÔLES</h3><p class="sub">'+message+'</p><label class="account-field">Sensibilité de la souris <input id="sensitivityRange" type="range" min="0.4" max="2.4" step="0.1" value="'+mouseSensitivity+'"></label><p class="sub">Bouton gauche : impact rigide · bouton droit : amorti · gauche + droit : spin · Échap : pause.</p>'+btn('ENREGISTRER','save-options',true)+'</div></div>';
 }
 function showArcadeIntro(){
   mode='arcade';opponent=ROSTER[level];selected=opponent.id;
@@ -109,7 +119,11 @@ function resume(){
   }
 }
 function buttonAction(action){
-  if(action==='multi'){stopNetwork();showLobby();}
+  if(action==='online'||action==='multi'){stopNetwork();showLobby();}
+  else if(action==='options'){showOptions();}
+  else if(action==='logout'){if(playerAuth.snapshot().user){void playerAuth.signOut().then(showMenu).catch(e=>{showOptions('Déconnexion impossible : '+e.message);});}else{$('accountLauncher').click();}}
+  else if(action==='account'){$('accountLauncher').click();}
+  else if(action==='save-options'){const range=$('sensitivityRange');if(range){mouseSensitivity=clamp(Number(range.value)||1,.4,2.4);try{localStorage.setItem('synthpuck.mouseSensitivity',String(mouseSensitivity));}catch{}showOptions('Sensibilité enregistrée.');}}
   else if(action==='host'||action==='join'){connectMultiplayer(action);}
   else if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
   else if(action==='arcade'){level=0;mode='arcade';showArcadeIntro();}
@@ -136,6 +150,10 @@ panel.addEventListener('click',event=>{
     return;
   }
   if(button.dataset.character){selected=button.dataset.character;showTrainingSelect();return;}
+  if(button.dataset.onlineInvite){void connectMultiplayer('host',null,button.dataset.onlineInvite);return;}
+  if(button.dataset.onlineRespond){const id=button.dataset.onlineRespond,accept=button.dataset.onlineAccept==='1';
+    if($('lobbyStatus'))$('lobbyStatus').textContent=accept?'Acceptation de l’invitation…':'Refus de l’invitation…';
+    void online.respond(id,accept).then(code=>{if(accept&&code)void connectMultiplayer('join',code);else if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation refusée.';}).catch(e=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation : '+e.message;});return;}
   if(button.dataset.action)buttonAction(button.dataset.action);
 });
 $('pauseButton').addEventListener('click',()=>{if(active)showPause();});
