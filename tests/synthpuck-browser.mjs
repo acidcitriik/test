@@ -175,6 +175,21 @@ try{
   assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
  }
 
+ // The overlay is a fully transparent canvas at the rails during gameplay.
+ // Read the ACTUAL canvas pixels, not just the implementation flag.
+ const railAlpha=()=>page.evaluate(()=>{
+   const p=__synthpuck.project(2.9,0),canvas=document.querySelector('#arena');
+   const snap=__synthpuck.snapshot(),dpr=canvas.width/snap.viewport.width;
+   const c=canvas.getContext('2d'),x=Math.round(p.x*dpr),y=Math.round(p.y*dpr);
+   const pixels=c.getImageData(x-3,y-3,7,7).data;
+   let max=0;
+   for(let i=3;i<pixels.length;i+=4)max=Math.max(max,pixels[i]);
+   return max;
+ });
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,false,
+  'Normal gameplay must not draw physical diagnostics');
+ assert.equal(await railAlpha(),0,'Green physical rail must have zero painted pixels during gameplay');
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
@@ -186,6 +201,10 @@ try{
  // collision centres and puck completely unchanged.
  await page.getByRole('button',{name:'CALER LES RAQUETTES'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='calibration');
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,true,
+  'Green collision guides must remain available in calibration');
+ assert.ok((await railAlpha())>0,'Physical rails must be painted only during calibration');
  const beforeOffsets=await page.evaluate(()=>({
   offsets:__synthpuck.snapshot().paddleOffsets,
   player:__synthpuck.spriteGeometry('player',0,-3.8),
@@ -231,6 +250,8 @@ try{
  });
  await page.getByRole('button',{name:'RETOUR PAUSE'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,false,
+  'Returning to pause hides all physics guides again');
  await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mamouda');
  const jumped=await page.evaluate(()=>__synthpuck.snapshot());
