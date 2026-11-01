@@ -152,6 +152,8 @@ try{
      type,z,center:__synthpuck.project(0,z),sprite:__synthpuck.spriteGeometry(type,0,z)
    }))),
    nearRail:__synthpuck.project(0,-5).y,
+   offsets:__synthpuck.snapshot().paddleOffsets,
+   scale:__synthpuck.snapshot().arenaFrame.width/1672,
    nearCases:[
      {type:'player',z:-4.56},{type:'puck',z:-4.83}
    ].map(({type,z})=>({type,z,box:__synthpuck.spriteGeometry(type,0,z)}))
@@ -159,12 +161,14 @@ try{
  for(const entry of contact.cases){
    const art=SPRITE_ART[entry.type],g=entry.sprite,p=entry.center;
    close(g.x+g.width/2,p.x,entry.type+' contact X');
-   close(g.y+g.height*art.anchor,p.y,entry.type+' contact Y');
+   const shifted=entry.type==='puck'?0:contact.offsets[entry.type]*contact.scale;
+   close(g.y+g.height*art.anchor,p.y+shifted,entry.type+' configured visual Y');
  }
  for(const entry of contact.nearCases){
    const art=SPRITE_ART[entry.type],g=entry.box;
-   assert.ok(g.y+g.height*art.inkBottom<=contact.nearRail+2.015,
-     entry.type+' painted rim must stay behind the front bumper');
+   const shift=entry.type==='puck'?0:contact.offsets[entry.type]*contact.scale;
+   assert.ok(g.y+g.height*art.inkBottom<=contact.nearRail+2.015+shift,
+     entry.type+' visual foot must respect the front bumper plus chosen offset');
  }
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
   assert.ok(spr.x>0&&spr.y>0&&spr.width>5&&spr.height>5,name+' fully visible');
