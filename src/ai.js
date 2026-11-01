@@ -52,7 +52,8 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   // Sideways rallies require a deliberate interception, not endless tracking.
   const lateralRally = onFinite(puck.z) && puck.z > .14 && Math.abs(puck.vz) < .10 && Math.abs(puck.vx) > .30;
   const slow = speed < 1.15;
-  const onOwnHalf = puck.z > .14;
+  const onOwnHalf = puck.z > 0;
+  const centreRecover = puck.z >= -.20 && puck.z <= .25 && (slow || horizontal);
   const outgoing = puck.vz < -1.5 && !horizontal && !slow;
   const followingBank = brain?.phase === 'follow' && now - brain.lastImpact < 1.30 && onOwnHalf;
   const deep = puck.z > 4.10;
@@ -64,6 +65,12 @@ export function chooseAITarget(puck, ai, player, cfg, brain = null, now = 0) {
   }
   if (brain) brain.lastPuckOnAIHalf = onOwnHalf;
 
+  // Pursue slow and horizontal disks at midfield; don't camp in goal.
+  if (centreRecover) {
+    setPhase(brain, 'collect', now);
+    const lead = clampAI(Math.abs(puck.x-ai.x)/Math.max(1,cfg.aiSpeed), .04, .50);
+    return {x:clampAI(predictRailX(puck,lead,cfg),minX,maxX),z:minZ};
+  }
   // Truly outgoing shots are no longer actively pursued. A banked ball, a
   // horizontal ball and a nearly stopped ball can all be recovered repeatedly.
   if (!onOwnHalf && puck.vz <= 0) {

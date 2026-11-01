@@ -11,10 +11,13 @@ export function chooseCharacterAITarget(puck,ai,player,cfg,brain,now){
   const zMin=cfg.paddleRadius+.08,zMax=cfg.length/2-zMin;
   let x=target.x,z=target.z;
   if(style==='guard'){
-    // Mute is careful and holds her goal rather than pursuing remote pucks.
-    if(puck.z<1.3){x*=.75;z=Math.max(z,3.25);}
+    // Defend only outgoing pucks far inside the player's half.
+    // Never suppress a central or rear-side recovery.
+    if(puck.z<-.35 && puck.vz<-.25 && brain?.phase==='defend'){x*=.75;z=Math.max(z,3.25);}
   }else if(style==='bruiser'){
-    if(puck.z>1.3){z=Math.max(z,puck.z+.09);}
+    // Preserve staging behind/beside a trapped puck; forcing z ahead
+    // cancelled Chonk's rear-side setup and pinned the puck in a corner.
+    if(puck.z>1.3 && z>=puck.z){z=Math.max(z,puck.z+.09);}
   }else if(style==='banker'){
     if(puck.z>1.0 && Math.hypot(puck.vx,puck.vz)<1.8){x+=puck.x>=0?-.24:.24;}
   }else if(style==='rush'){

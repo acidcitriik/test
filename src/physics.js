@@ -10,7 +10,7 @@ export const DEFAULTS = Object.freeze({
   friction: 0.25, paddleGrip: 0.65, wallFriction: 0.32, gestureTransfer: 0.40, drag: 0.09, spinDrag: 0.32,
   aiSpeed: 6.7, aiAcceleration: 36,
   normalHitMaxSpeed: 16, smashEffectMinSpeed: 14, smashEffectMinIntensity: .5,
-  tick: 1 / 120, scoreToWin: 7
+  tick: 1 / 120, scoreToWin: 7, serveLimit: 10, returnLimit: 7
 });
 
 export const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
@@ -226,11 +226,14 @@ export class Match {
     this.aiBrain = createAIBrain();
     this.aiSmash = {phase:"idle", next:0};
     this.target = { x: 0, z: -3.8 };
-    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, angle: 0, smashActive: false, lastImpact: null }; // visible pre-serve rest position
+    this.puck = { x: 0, z: 0, vx: 0, vz: 0, spin: 0, angle: 0, smashActive: false, lastImpact: null }; // visible pre-serve rest position
     this.scores = [0, 0];
     this.state = 'ready';
-    this.server = -1; // first engagement belongs to the player
+    this.server = 0; // neutral opening: both paddles contest the centre
     this.awaitingServe = false;
+    this.serveStartedAt = 0;
+    this.possessionSide = 0;
+    this.possessionSince = null;
     this.time = 0;
     this.hits = 0;
     this.rally = 0;
@@ -241,7 +244,7 @@ export class Match {
   reset() { Object.assign(this, new Match({ ...this.cfg })); }
   serve() {
     if (this.state === 'over') return;
-    // A real engagement: a stationary puck on the server's half.
+    // Opening at midfield, then a stationary puck on the awarded server's half.
     // Neither player nor AI receives a pre-programmed impulse.
     this.puck.x = 0; this.puck.z = this.server * 2.35;
     this.puck.vx = 0; this.puck.vz = 0;
@@ -253,6 +256,9 @@ export class Match {
     if (this.cfg.telemetry) this.roundLog = {schema:1, units:{distance:'table unit',time:'second',speed:'table unit/s',spin:'rad/s',impulse:'per unit puck mass',force:'not measured; contact duration is not modeled'},config:{...this.cfg},startTime:this.time,initialScores:[...this.scores],samples:[],contacts:[],peakSpeed:0,truncated:false};
     this.rally = 0; this.state = 'playing';
     this.awaitingServe = true;
+    this.serveStartedAt = this.time;
+    this.possessionSide = 0;
+    this.possessionSince = null;
     this.aiBrain = createAIBrain();
     this.aiSmash = {phase:"idle", next:0};
     this.events.length = 0;
@@ -294,6 +300,19 @@ export class Match {
     if(state.phase==='strike')return {x:p.x,z:Math.max(cfg.paddleRadius+.08,p.z-.5)};
     return fallback;
   }
+  awardServe(reason, offender) {
+    // A violation changes the next server without awarding a point.
+    if (this.roundLog) Object.assign(this.roundLog, {
+      endTime: this.time, result: 'timeout', reason, offender,
+      scores: [...this.scores], hits: this.rally
+    });
+    this.record({ type: 'timeout', reason, offender, nextServer: -offender, scores: [...this.scores] });
+    this.server = -offender;
+    this.awaitingServe = false;
+    this.possessionSide = 0;
+    this.possessionSince = null;
+    this.state = 'ready';
+  }
   tick() {
     if (this.state !== 'playing') return;
     const cfg = this.cfg, dt = cfg.tick, puck = this.puck;
@@ -312,7 +331,9 @@ export class Match {
       applyDirectMove(this.player, direct, (k+1)/steps);
       let aiTarget = this.awaitingServe && this.server === 1
         ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
-        : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
+        : this.awaitingServe && this.server === 0
+          ? { x: puck.x, z: cfg.paddleRadius + .08 } // free central claim, physical hit only
+          : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
       if (!remote && cfg.aiStyle) aiTarget = this.chooseSmashTarget(aiTarget);
       if(remote){const p={};applyDirectMove(p,remote,(k+1)/steps);Object.assign(this.ai,{x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});}
       else moveToward(this.ai, aiTarget, step, cfg, true);
@@ -365,6 +386,22 @@ export class Match {
       this.server = goal > 0 ? -1 : 1;
       this.state = Math.max(...this.scores) >= cfg.scoreToWin ? 'over' : 'ready';
       return;
+    }
+    if (this.awaitingServe) {
+      // The first centre duel has no service timer.
+      if (this.server !== 0 && this.time - this.serveStartedAt >= cfg.serveLimit - EPS)
+        this.awardServe('serve', this.server);
+    } else {
+      // Only crossing the median renews the 7s clock; rail bounces and
+      // repeated hits on one half never do.
+      const side = puck.z > EPS ? 1 : puck.z < -EPS ? -1 : 0;
+      if (side !== 0 && side !== this.possessionSide) {
+        this.possessionSide = side;
+        this.possessionSince = this.time;
+      }
+      if (side !== 0 && this.possessionSince !== null &&
+          this.time - this.possessionSince >= cfg.returnLimit - EPS)
+        this.awardServe('return', side);
     }
     const speed = magnitude(puck.vx, puck.vz);
     this.peakSpeed = Math.max(this.peakSpeed, speed);

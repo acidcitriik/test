@@ -126,7 +126,10 @@ try {
   assert.ok(finalTouch.target.x<startTouch.x,'swipe to the right should move the paddle screen-right');
   assert.ok(finalTouch.target.z>startTouch.z,'swipe upward should advance the paddle');
   await cdp.detach();
-  await mobile.locator('#mobilePause').click();
+  // A neutral centre faceoff can now end in a genuine AI point before this
+  // check. Either a round-result overlay or a pause overlay is valid here.
+  if(await mobile.locator('#overlay').evaluate(e=>getComputedStyle(e).display)!=='grid')
+    await mobile.locator('#mobilePause').click();
   assert.equal(await mobile.locator('#overlay').evaluate(e=>getComputedStyle(e).display),'grid');
   // Rotation or window resize must recompute the free bottom fifth.
   await mobile.setViewportSize({width:844,height:390});

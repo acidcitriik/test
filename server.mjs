@@ -31,7 +31,7 @@ let last=performance.now();
 setInterval(()=>{const now=performance.now(),dt=Math.min((now-last)/1000,.1);last=now;for(const r of rooms.values()){
   const m=r.match;if(!m)continue;r.elapsed+=dt;r.broadcast+=dt;
   while(r.elapsed>=m.cfg.tick){m.tick();r.elapsed-=m.cfg.tick;if(m.state==='ready'){r.nextServe??=now+1500;if(now>=r.nextServe){m.serve();m.remoteTarget={x:0,z:-3.8};r.nextServe=null;}}}
-  if(r.broadcast>=1/60){r.broadcast=0;for(const p of r.players)send(p,{type:'state',player:m.player,ai:m.ai,puck:m.puck,scores:m.scores,state:m.state,server:m.server,awaitingServe:m.awaitingServe});}
+  if(r.broadcast>=1/60){r.broadcast=0;for(const p of r.players)send(p,{type:'state',player:m.player,ai:m.ai,puck:m.puck,scores:m.scores,state:m.state,server:m.server,awaitingServe:m.awaitingServe,time:m.time,serveStartedAt:m.serveStartedAt,possessionSide:m.possessionSide,possessionSince:m.possessionSince});}
 }},4);
 setInterval(()=>{for(const ws of wss.clients){if(!ws.alive){ws.terminate();continue;}ws.alive=false;ws.ping();}},15000).unref();
 server.listen(Number(process.env.PORT)||3000,'0.0.0.0',()=>console.log('Synthpuck : http://localhost:'+ (Number(process.env.PORT)||3000)));
