@@ -42,7 +42,7 @@ node tests/synthpuck-browser.mjs
 
 Les vérifications automatiques couvrent les règles physiques, les profils de difficulté, l'ordre des personnages, l'interface, les choix de l'entraînement, la projection commune, l'absence de ressources manquantes et la possibilité de jouer et mettre en pause.
 
-Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveur multijoueur ou système anti-triche n'est inclus.
+Le jeu solo local reste accessible sans connexion. Le multijoueur expérimental et la gestion facultative des comptes sont décrits plus bas.
 ## Assets HD (30 octobre 2026)
 
 - `assets/ui/menu-hd.avif` : menu principal validé en **1672 × 941**, rendu à la bonne proportion sur tout écran.
@@ -82,3 +82,12 @@ Le jeu demande maintenant un code privé de relais, conservé uniquement dans se
 Le code du Worker est dans cloudflare/turn-worker.js. Secrets à configurer dans Cloudflare : TURN_KEY_ID, TURN_API_TOKEN, RELAY_ACCESS_CODE. Aucun de ces secrets ne doit être commité. L’origine autorisée est https://acidcitriik.github.io. Le code privé protège l’accès aux identifiants temporaires ; CORS seul ne protège pas le quota. Ce mécanisme est prévu pour des tests privés, pas pour un lancement public.
 
 Test réel : définir SYNTHPUCK_RELAY_ACCESS dans l’environnement puis lancer node tests/cloudflare-relay.mjs, avec le serveur local actif. Le test impose TURN en TLS sur le port 443 et vérifie le refus d’un mauvais code.
+
+
+## Comptes joueurs (Google, e-mail et profil)
+
+Le bouton **COMPTE / INVITÉ**, affiché sur le menu principal, ouvre une interface de connexion et d'inscription séparée du moteur de jeu. Le jeu reste accessible en mode invité. Les profils peuvent conserver un pseudo ainsi que des préférences de personnage (présentation neutre/masculine/féminine/androgyne/libre, teinte de peau, yeux, cheveux et bandana/masque/autres accessoires). Le rendu du personnage personnalisé en match viendra dans une étape ultérieure.
+
+**Attention : les comptes ne sont pas encore activés sur le site public tant que Supabase et Google OAuth n'ont pas été configurés.** Aucune clé privée ne doit être ajoutée à GitHub. Le script public, la migration PostgreSQL RLS et la procédure Google figurent dans [docs/PLAYER_ACCOUNTS.md](docs/PLAYER_ACCOUNTS.md). Les mots de passe sont traités par Supabase Auth, pas par GitHub Pages ni par le jeu.
+
+Le test de validation du modèle d'avatar est intégré à `npm test`.
