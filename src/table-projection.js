@@ -2,7 +2,7 @@
 // No artwork, collision coordinate or gameplay constant is modified here.
 // All Synthpuck stage illustrations share the same table silhouette.
 export const TABLE_CALIBRATION = Object.freeze({
-  far: Object.freeze({y:405,left:640,right:1032}),
+  far: Object.freeze({y:405,left:632,right:1040}),
   center: Object.freeze({y:554,left:475,right:1201}),
   near: Object.freeze({y:816,left:200,right:1475})
 });
