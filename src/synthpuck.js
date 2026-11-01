@@ -153,7 +153,8 @@ panel.addEventListener('click',event=>{
   if(button.dataset.onlineInvite){void connectMultiplayer('host',null,button.dataset.onlineInvite);return;}
   if(button.dataset.onlineRespond){const id=button.dataset.onlineRespond,accept=button.dataset.onlineAccept==='1';
     if($('lobbyStatus'))$('lobbyStatus').textContent=accept?'Acceptation de l’invitation…':'Refus de l’invitation…';
-    void online.respond(id,accept).then(code=>{if(accept&&code)void connectMultiplayer('join',code);else if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation refusée.';}).catch(e=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation : '+e.message;});return;}
+    if(accept)online.status='busy';
+    void online.respond(id,accept).then(code=>{if(accept&&code)void connectMultiplayer('join',code);else if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation refusée.';}).catch(e=>{online.status='available';if($('lobbyStatus'))$('lobbyStatus').textContent='Invitation : '+e.message;});return;}
   if(button.dataset.action)buttonAction(button.dataset.action);
 });
 $('pauseButton').addEventListener('click',()=>{if(active)showPause();});
@@ -369,6 +370,7 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
   drawPhysicalTableWalls();
 }
 function stopNetwork(){
+  if(network&&online.ready)void online.cancelPending().catch(()=>{});
   connectionAttempt=null;
   clearInterval(networkTimer);networkTimer=null;
   if(network){network.onclose=null;network.close();network=null;}
@@ -384,11 +386,12 @@ function updateConnectionDebug(report){
   box.hidden=false;$('connectionLog').textContent=report;const log=$('connectionLog');log.scrollTop=log.scrollHeight;
 }
 function showLobby(message='Choisis un joueur en ligne ou utilise un code privé.'){
+  online.status='available';
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
   panel.innerHTML=lobbyMarkup(btn);
   $('lobbyStatus').textContent=message;
   renderOnlineSections(online,!!playerAuth.snapshot().user);
-  void online.start();
+  void online.start().then(()=>online.pulse());
 }
 async function connectMultiplayer(action,suppliedCode=null,inviteTarget=null){
   const code=(suppliedCode??$('roomCode')?.value??'').trim();
