@@ -1,0 +1,107 @@
+/* SYNTHPUCK / Online menu refresh.
+   Original painted logo and upper scene stay untouched.
+   Fade out the OLD baked-in Options/Exit labels and replace only menu controls. */
+#panel[data-screen="menu"] .menu-art{
+  isolation:isolate;
+  background:radial-gradient(ellipse at 50% 68%,#173a5c 0%,#0c1830 52%,#060b17 90%);
+}
+#panel[data-screen="menu"] .menu-image{
+  z-index:0;
+  -webkit-mask-image:linear-gradient(to bottom,#000 0%,#000 56%,transparent 72%);
+  mask-image:linear-gradient(to bottom,#000 0%,#000 56%,transparent 72%);
+}
+#panel[data-screen="menu"] .menu-main-buttons,
+#panel[data-screen="menu"] .menu-secondary-buttons{
+  position:absolute;z-index:2;display:grid;gap:1.2%;
+  margin:0;align-items:stretch;
+}
+#panel[data-screen="menu"] .menu-main-buttons{
+  left:9%;right:9%;top:68%;height:13%;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+}
+#panel[data-screen="menu"] .menu-secondary-buttons{
+  left:28%;right:28%;top:83%;height:9.5%;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:2%;
+}
+#panel[data-screen="menu"] .menu-main-buttons .btn,
+#panel[data-screen="menu"] .menu-secondary-buttons .btn{
+  position:relative;width:100%;height:100%;min-width:0;min-height:0;
+  display:grid;place-items:center;overflow:hidden;
+  color:#e8faff!important;font-size:clamp(12px,2.2vw,34px)!important;
+  line-height:1.1!important;letter-spacing:.08em;
+  border:2px solid #81ddf8!important;border-radius:8px;
+  background:linear-gradient(158deg,#255a7a 0%,#123656 43%,#10172d 100%)!important;
+  text-shadow:1px 3px 1px #020612,0 0 18px #0ad0ff80;
+  box-shadow:inset 0 0 0 2px #a9e8fa22,0 8px 0 #020917,0 0 19px #0785b755;
+  font-family:'Barlow Condensed',Impact,sans-serif;
+  cursor:pointer;transform:none;
+  padding:4px 8px;
+}
+#panel[data-screen="menu"] .menu-main-buttons .btn.primary{
+  border-color:#ffabb1!important;
+  background:linear-gradient(155deg,#fc6c63 0%,#aa2b53 47%,#4e1b4f 100%)!important;
+  box-shadow:inset 0 0 0 2px #ffdede33,0 8px 0 #1f091d,0 0 24px #fb315255;
+}
+#panel[data-screen="menu"] .menu-secondary-buttons .btn{
+  border-color:#5eb8d6!important;
+  color:#cdeeff!important;
+  font-size:clamp(11px,1.6vw,24px)!important;
+  border-radius:5px;
+  background:linear-gradient(160deg,#182f4d 0%,#0c1a2f 100%)!important;
+  box-shadow:inset 0 0 0 1px #c5ecff24,0 5px 0 #020917;
+}
+#panel[data-screen="menu"] .menu-main-buttons .btn:hover,
+#panel[data-screen="menu"] .menu-secondary-buttons .btn:hover{
+  outline:2px solid white;outline-offset:3px;
+  filter:brightness(1.25);transform:translateY(-2px);
+}
+#panel[data-screen="menu"] .btn:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.online-page{width:min(1100px,98vw);max-height:calc(100dvh - 30px)}
+.online-page .page-head .btn{width:auto}
+.online-layout{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+.online-panel,.online-code{
+  min-width:0;min-height:0;padding:clamp(14px,2vw,24px);
+  background:linear-gradient(150deg,#101e34f5,#090e21f5);
+  border:1px solid #5f91b37a;border-radius:7px;
+  display:grid;gap:12px;align-content:start;
+}
+.online-panel h3,.online-code h3{color:#b9efff;font-size:clamp(20px,2.5vw,31px)}
+.online-list{display:grid;gap:9px;max-height:30vh;overflow-y:auto}
+.online-list:empty:after{content:"Synchronisation du salon…";color:#acc6db;font-size:15px}
+.online-player{
+  min-height:57px;width:100%;display:flex;align-items:center;gap:12px;
+  padding:10px 14px;text-align:left;border-radius:5px;
+  border:1px solid #447a99;background:#102945;color:#e8f5ff;
+}
+.online-player strong{font-weight:800;font-size:19px;flex:1;overflow:hidden;text-overflow:ellipsis}
+.online-player small{font-weight:700;letter-spacing:.08em;color:#8ae6ff;font-size:12px}
+.online-player:not(:disabled):hover{border-color:#d1f7ff;background:#1b506b}
+.online-player:disabled{opacity:.65;cursor:not-allowed}
+.online-dot{width:11px;height:11px;flex:0 0 auto;border-radius:50%;background:#8492a2}
+.online-dot.available{background:#64e6a1;box-shadow:0 0 12px #64e6a188}
+.online-dot.busy{background:#ffac66}
+.online-invite{padding:12px;background:#162942;border:1px solid #49a9d0;border-radius:5px;display:grid;gap:9px}
+.online-invite>strong{font-size:19px;color:white}
+.online-invite-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.online-invite-actions button,.online-cta{
+  border:1px solid #64ccf1;border-radius:4px;background:#14506b;color:#f0fbff;
+  min-height:40px;padding:7px 12px;font:800 18px 'Barlow Condensed',sans-serif;letter-spacing:.08em
+}
+.online-invite-actions button:first-child{background:#c73e58;border-color:#ff8e97}
+.online-invite-actions button:hover,.online-cta:hover{filter:brightness(1.2)}
+.online-code-actions{display:grid;grid-template-columns:minmax(150px,.8fr) 1.2fr minmax(130px,.65fr);align-items:end;gap:10px}
+.online-code-actions .btn{font-size:clamp(16px,1.8vw,24px);min-height:53px}
+.online-code-actions label{font-size:13px;letter-spacing:.09em;color:#c9dcef;font-weight:800}
+.online-code-actions label input{display:block;width:100%;margin:4px 0 0;background:#071524;border:1px solid #4492b2;color:white;border-radius:5px;min-height:51px;padding:8px;font-size:16px}
+.options-page{width:min(780px,94vw)}
+@media(max-width:690px){
+ #panel[data-screen="menu"] .menu-main-buttons{left:5%;right:5%;top:67%;height:13%}
+ #panel[data-screen="menu"] .menu-secondary-buttons{left:20%;right:20%;top:83%;height:10%}
+ #panel[data-screen="menu"] .menu-main-buttons .btn{font-size:clamp(10px,2.4vw,21px)!important;letter-spacing:.02em;padding:3px}
+ #panel[data-screen="menu"] .menu-secondary-buttons .btn{font-size:clamp(9px,2.1vw,17px)!important;letter-spacing:.02em;padding:2px}
+ .online-layout{grid-template-columns:1fr}
+ .online-list{max-height:22vh}
+ .online-code-actions{grid-template-columns:1fr}
+ .online-code-actions .btn{min-height:44px}
+}
