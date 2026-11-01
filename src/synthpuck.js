@@ -1,6 +1,6 @@
 import {cloudflareConfiguration} from './ice-config.js';
-import {BrowserHost} from './browser-host.js?v=stroke-20261101-2';
-import {Match,clamp,magnitude} from './physics.js?v=stroke-20261101-2';
+import {BrowserHost} from './browser-host.js?v=round-log-20261101-3';
+import {Match,clamp,magnitude} from './physics.js?v=round-log-20261101-3';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
@@ -65,11 +65,18 @@ function showPause(reason='DUEL EN PAUSE'){
   panel.innerHTML=`<div class="compact-center pause-center"><p class="eyebrow">SYNTHPUCK</p><h2>${reason}</h2><p class="sub">${opponent.name} · ${mode==='arcade'?'ARCADE':'ENTRAÎNEMENT'}</p>${levels}<div class="pause-actions">${btn('REPRENDRE','resume',true)}${btn('RECOMMENCER','retry')}${btn('RETOUR AU MENU','menu')}</div></div>`;
   document.exitPointerLock?.();
 }
+function logButton(){return mode==='arcade'&&match?.roundLog?btn('TÉLÉCHARGER LE LOG','downloadLog'):'';}
+function downloadRoundLog(){
+ if(!match?.roundLog)return;
+ const data={...match.roundLog,opponent:opponent.id,level:level+1,exportedAt:new Date().toISOString(),build:'round-log-20261101'};
+ const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'}));
+ const a=document.createElement('a');a.href=url;a.download=`synthpuck-${opponent.id}-${match.scores.join('-')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
 function showPoint(){
   active=false;
   setScreen('point',true);const last=match.events.findLast(e=>e.type==='goal');
   const won=last?.scorer===0;
-  panel.innerHTML=`<div class="compact-center"><p class="eyebrow">${opponent.name}</p><h2 class="${won?'win':'lose'}">${won?'POINT !':'POINT ADVERSE'}</h2><p class="sub">${match.scores[0]} : ${match.scores[1]} · ${statusText()}</p>${btn('CONTINUER','resume',true)}</div>`;
+  panel.innerHTML=`<div class="compact-center"><p class="eyebrow">${opponent.name}</p><h2 class="${won?'win':'lose'}">${won?'POINT !':'POINT ADVERSE'}</h2><p class="sub">${match.scores[0]} : ${match.scores[1]} · ${statusText()}</p>${btn('CONTINUER','resume',true)}${logButton()}</div>`;
   document.exitPointerLock?.();
 }
 function showMatchEnd(){
@@ -83,9 +90,10 @@ function showMatchEnd(){
     setScreen('result',true);
     panel.innerHTML=`<div class="compact-center"><p class="eyebrow">${opponent.name} · ${match.scores[0]} : ${match.scores[1]}</p><h2 class="${win?'win':'lose'}">${win?'VICTOIRE':'DÉFAITE'}</h2><p class="sub">${mode==='training'?'Entraînement terminé.':win?'Adversaire vaincu. Le prochain défi t’attend.':'Réessaie pour poursuivre l’Arcade.'}</p>${mode==='arcade'&&win?btn('ADVERSAIRE SUIVANT','next',true):btn('REJOUER','retry',true)}${mode==='training'?btn('CHOISIR UN ADVERSAIRE','training'):''}${btn('RETOUR AU MENU','menu')}</div>`;
   }
+  if(mode==='arcade')panel.insertAdjacentHTML('beforeend',logButton());
   document.exitPointerLock?.();
 }
-function createMatch(){opponent=mode==='training'?getCharacter(selected):ROSTER[level];match=new Match(matchConfiguration(opponent));match.serve();halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};}
+function createMatch(){opponent=mode==='training'?getCharacter(selected):ROSTER[level];match=new Match({...matchConfiguration(opponent),telemetry:mode==='arcade'});match.serve();halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};}
 function beginMatch(){
   currentStage=stageIdFor(mode,opponent.id);
   setBackground(currentStage,true);createMatch();
@@ -109,7 +117,8 @@ function resume(){
   }
 }
 function buttonAction(action){
-  if(action==='multi'){stopNetwork();showLobby();}
+  if(action==='downloadLog'){downloadRoundLog();}
+  else if(action==='multi'){stopNetwork();showLobby();}
   else if(action==='host'||action==='join'){connectMultiplayer(action);}
   else if(action==='menu'){active=false;document.exitPointerLock?.();showMenu();}
   else if(action==='arcade'){level=0;mode='arcade';showArcadeIntro();}

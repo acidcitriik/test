@@ -218,6 +218,7 @@ export class Match {
     Object.assign(this.ai, { x: 0, z: 3.8, vx: 0, vz: 0 });
     Object.assign(this.target, { x: 0, z: -3.8 });
     this.player.stroke = null; this.ai.stroke = null;
+    if (this.cfg.telemetry) this.roundLog = {schema:1, units:{distance:'table unit',time:'second',speed:'table unit/s',spin:'rad/s',impulse:'per unit puck mass',force:'not measured; contact duration is not modeled'},config:{...this.cfg},startTime:this.time,initialScores:[...this.scores],samples:[],contacts:[],peakSpeed:0,truncated:false};
     this.rally = 0; this.state = 'playing';
     this.awaitingServe = true;
     this.aiBrain = createAIBrain();
@@ -233,6 +234,10 @@ export class Match {
     if (this.input.left) return 'rigid';
     if (this.input.right) return 'soft';
     return 'normal';
+  }
+  logContact(event,offset=0){
+    if(this.roundLog.contacts.length<20000)this.roundLog.contacts.push({time:this.time-this.cfg.tick+offset,...event});
+    else this.roundLog.truncated=true;
   }
   record(event) {
     this.events.push({ ...event, time: this.time });
@@ -268,7 +273,13 @@ export class Match {
         [this.player, 'player', this.impactMode()],
         [this.ai, 'ai', this.remoteMode ?? 'normal']
       ]) {
+        const before = this.roundLog ? {...puck} : null;
         if (collidePaddle(puck, paddle, cfg, mode)) {
+          if (this.roundLog) {
+            const dot=before.vx*puck.vx+before.vz*puck.vz;
+            const lengths=magnitude(before.vx,before.vz)*magnitude(puck.vx,puck.vz);
+            this.logContact({type:'paddle',by:label,mode,before,after:{...puck},paddle:{...paddle,stroke:paddle.stroke?{...paddle.stroke}:null},directionChangeDegrees:lengths>EPS?Math.acos(clamp(dot/lengths,-1,1))*180/Math.PI:null,impulse:{...puck.lastImpact}},k*step);
+          }
           if (this.awaitingServe) {
             this.awaitingServe = false;
             this.record({ type: 'serve', by: label });
@@ -279,15 +290,23 @@ export class Match {
           puck.lastImpact = null;
         }
       }
+      const beforeRail=this.roundLog?{...puck}:null;
       goal = collideWalls(puck, cfg);
+      if(beforeRail&&(beforeRail.vx!==puck.vx||beforeRail.vz!==puck.vz))this.logContact({type:'rail',before:beforeRail,after:{...puck},deltaVelocity:{x:puck.vx-beforeRail.vx,z:puck.vz-beforeRail.vz},deltaSpin:puck.spin-beforeRail.spin},k*step);
+      if(this.roundLog)this.roundLog.peakSpeed=Math.max(this.roundLog.peakSpeed,magnitude(puck.vx,puck.vz));
       if (goal) break;
       puck.vx *= Math.exp(-cfg.drag * step);
       puck.vz *= Math.exp(-cfg.drag * step);
       puck.spin *= Math.exp(-cfg.spinDrag * step);
     }
+    if(this.roundLog){
+      const log=this.roundLog;
+      if(log.samples.length<72000)log.samples.push({time:this.time,puck:{...puck},player:{...this.player,stroke:this.player.stroke?{...this.player.stroke}:null},ai:{...this.ai},target:{...this.target},mode:this.impactMode()});else log.truncated=true;
+    }
     if (goal) {
       const scorer = goal === 1 ? 1 : 0;
       this.scores[scorer]++;
+      if(this.roundLog)Object.assign(this.roundLog,{endTime:this.time,scorer,scores:[...this.scores],hits:this.rally});
       this.record({ type: 'goal', scorer, scores: [...this.scores] });
       this.server = goal > 0 ? -1 : 1;
       this.state = Math.max(...this.scores) >= cfg.scoreToWin ? 'over' : 'ready';
