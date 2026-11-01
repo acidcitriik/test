@@ -175,6 +175,21 @@ try{
   assert.ok(spr.x+spr.width<1672&&spr.y+spr.height<941,name+' stays on screen');
  }
 
+ // The overlay is a fully transparent canvas at the rails during gameplay.
+ // Read the ACTUAL canvas pixels, not just the implementation flag.
+ const railAlpha=()=>page.evaluate(()=>{
+   const p=__synthpuck.project(2.9,0),canvas=document.querySelector('#arena');
+   const snap=__synthpuck.snapshot(),dpr=canvas.width/snap.viewport.width;
+   const c=canvas.getContext('2d'),x=Math.round(p.x*dpr),y=Math.round(p.y*dpr);
+   const pixels=c.getImageData(x-3,y-3,7,7).data;
+   let max=0;
+   for(let i=3;i<pixels.length;i+=4)max=Math.max(max,pixels[i]);
+   return max;
+ });
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,false,
+  'Normal gameplay must not draw physical diagnostics');
+ assert.equal(await railAlpha(),0,'Green physical rail must have zero painted pixels during gameplay');
  await page.screenshot({path:'synthpuck-arcade-preview.png'});
  await page.keyboard.press('Escape');
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
@@ -186,6 +201,10 @@ try{
  // collision centres and puck completely unchanged.
  await page.getByRole('button',{name:'CALER LES RAQUETTES'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='calibration');
+ await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,true,
+  'Green collision guides must remain available in calibration');
+ assert.ok((await railAlpha())>0,'Physical rails must be painted only during calibration');
  const beforeOffsets=await page.evaluate(()=>({
   offsets:__synthpuck.snapshot().paddleOffsets,
   player:__synthpuck.spriteGeometry('player',0,-3.8),
@@ -231,6 +250,8 @@ try{
  });
  await page.getByRole('button',{name:'RETOUR PAUSE'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+ assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).physicsGuidesVisible,false,
+  'Returning to pause hides all physics guides again');
  await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mamouda');
  const jumped=await page.evaluate(()=>__synthpuck.snapshot());
@@ -256,6 +277,23 @@ try{
  assert.equal(await page.locator('[data-character="2502"] strong').innerText(),'HAL');
  await page.screenshot({path:'synthpuck-character-select-preview.png'});
  assert.equal(await page.locator('svg').count(),0,'No SVG in character selection');
+ // Point/timeout screens may legitimately appear during long screenshot loops.
+ // Recover through the real CONTINUER control, not a private state shortcut.
+ const pauseTraining=async()=>{
+  for(let attempt=0;attempt<8;attempt++){
+   const current=await page.evaluate(()=>__synthpuck.snapshot().screen);
+   if(current==='pause')return;
+   if(current==='point'){
+    await page.getByRole('button',{name:'CONTINUER'}).click();
+   }else if(current==='playing'){
+    await page.keyboard.press('Escape');
+   }else{
+    throw Error('Unexpected training screen while pausing: '+current);
+   }
+  }
+  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).screen,'pause',
+   'Training can be paused after genuine round transitions');
+ };
  for(const id of ['mute','chonk','simous','mamouda','diamond','stal','2502']){
   await page.locator(`[data-character="${id}"]`).click();
   assert.equal(await page.locator('.roster-card.selected').getAttribute('data-character'),id);
@@ -265,10 +303,11 @@ try{
   if(id!=='2502')await page.screenshot({path:`synthpuck-opponent-${id}-preview.png`});
   const snap=await page.evaluate(()=>__synthpuck.snapshot());
   assert.equal(snap.mode,'training');assert.equal(snap.stage,'training');
-  assert.equal(snap.opponent,id);assert.equal(snap.state,'playing');
+  assert.equal(snap.opponent,id);
+  assert.ok(['playing','ready'].includes(snap.state),
+    'Training may finish a legal point while screenshots are captured');
   assert.match(await page.locator('#hudStage').innerText(),/^GRID 00 · /);
-  await page.keyboard.press('Escape');
-  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
+  await pauseTraining();
   assert.equal(await page.locator('[data-pause-level]').count(),0,'Training pause does not jump into Arcade');
   await page.getByRole('button',{name:'RETOUR AU MENU'}).click();
   await page.getByRole('button',{name:'ENTRAÎNEMENT'}).click();

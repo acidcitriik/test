@@ -26,6 +26,10 @@ let halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};
 let network=null, networkSlot=0, networkTimer=null;
 let mode='arcade',level=0,selected='mute',opponent=ROSTER[0];
 let currentStage='mamouda',screen='splash',match=null,active=false;
+// Green collision/rail guides are only for manual calibration, not gameplay.
+// The optional ?debugPhysics=1 URL forces diagnostics for developers.
+const forcePhysicsGuides=new URLSearchParams(location.search).get('debugPhysics')==='1';
+const physicsGuidesVisible=()=>forcePhysicsGuides||screen==='calibration';
 let lastTime=0,accumulator=0,mouseSensitivity=1,touchId=null;
 let lastTouch={x:0,y:0},inputMode='normal',pointerRequested=false;
 let layout={scale:1,x:0,y:0,cssW:1,cssH:1,dpr:1};
@@ -80,7 +84,7 @@ function showCalibration(){
   const value=paddleOffsets[type];
   return `<div class="paddle-offset-row"><label for="paddle-offset-${type}">${title} <output id="offset-label-${type}">${value>0?'+':''}${value} px</output></label><div class="paddle-offset-inputs"><input id="paddle-offset-${type}" type="range" min="${OFFSET_MIN}" max="${OFFSET_MAX}" step="1" value="${value}" data-offset-type="${type}" aria-label="${title}, déplacement vertical"/><input id="offset-number-${type}" type="number" min="${OFFSET_MIN}" max="${OFFSET_MAX}" step="1" value="${value}" data-offset-type="${type}" aria-label="${title}, pixels exacts"/></div></div>`;
  };
- panel.innerHTML=`<div class="paddle-calibration-panel"><p class="eyebrow">CALAGE VISUEL · PIXELS NATIFS</p><h2>RAQUETTES</h2><p class="sub">Les cercles verts ne bougent pas. Valeur positive = dessin plus bas. Réglage immédiat et sauvegardé.</p>${field('player','Raquette bleue')}${field('ai','Raquette adverse')}<div class="paddle-calibration-actions">${btn('RÉINITIALISER','calibration-reset')}${btn('RETOUR PAUSE','calibration-done')}${btn('REPRENDRE','resume',true)}</div></div>`;
+ panel.innerHTML=`<div class="paddle-calibration-panel"><p class="eyebrow">CALAGE VISUEL · PIXELS NATIFS</p><h2>RAQUETTES</h2><p class="sub">Repères verts affichés seulement pendant le calage. Valeur positive = dessin plus bas. Réglage immédiat et sauvegardé.</p>${field('player','Raquette bleue')}${field('ai','Raquette adverse')}<div class="paddle-calibration-actions">${btn('RÉINITIALISER','calibration-reset')}${btn('RETOUR PAUSE','calibration-done')}${btn('REPRENDRE','resume',true)}</div></div>`;
  document.exitPointerLock?.();
 }
 function storePaddleOffsets(){
@@ -379,7 +383,7 @@ function drawObject(obj,type){
  const img=images.sprites[type];
  // Green collision guides are translucent underlays. Paint sprites
  // afterward at full opacity so their artwork is never ghosted.
- drawCollisionBody(obj,type);
+ if(physicsGuidesVisible())drawCollisionBody(obj,type);
  if(img?.complete&&img.naturalWidth){
   ctx.save();
   ctx.globalAlpha=1; // Preserve opaque painted WebP pixels (transparent margins remain)
@@ -399,7 +403,7 @@ function drawObject(obj,type){
    ctx.fillStyle='#f4feff';ctx.beginPath();ctx.arc(-.52,0,.13,0,Math.PI*2);ctx.fill();
   }
   ctx.restore();
- }else{
+ }else if(physicsGuidesVisible()){
   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg[type==='puck'?'puckRadius':'paddleRadius']);
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
   ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];ctx.fill();
@@ -457,7 +461,7 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
     {...(active?match.target:match.player),type:'player'}];
   actors.sort((a,b)=>b.z-a.z);
   for(const p of actors)drawObject(p,p.type);
-  drawPhysicalTableWalls();
+  if(physicsGuidesVisible())drawPhysicalTableWalls();
 }
 function stopNetwork(){
   if(network&&online.ready)void online.cancelPending().catch(()=>{});
@@ -653,6 +657,7 @@ window.__synthpuck=Object.freeze({
     halEyePosition:currentStage===HAL_STAGE_ID?{...halGaze}:null,
     aiSpeed:match?.cfg.aiSpeed??null,aiStyle:match?.cfg.aiStyle??null,
     paddleOffsets:{...paddleOffsets},
+    physicsGuidesVisible:physicsGuidesVisible(),
     player:match?{x:match.player.x,z:match.player.z}:null,
     target:match?{x:match.target.x,z:match.target.z}:null}),
   project:(x,z)=>match?project(x,z):null,
