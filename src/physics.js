@@ -224,6 +224,7 @@ export class Match {
     this.player = { x: 0, z: -3.8, vx: 0, vz: 0, side: -1 };
     this.ai = { x: 0, z: 3.8, vx: 0, vz: 0, side: 1 };
     this.aiBrain = createAIBrain();
+    this.aiSmash = {phase:"idle", next:0};
     this.target = { x: 0, z: -3.8 };
     this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, angle: 0, smashActive: false, lastImpact: null }; // visible pre-serve rest position
     this.scores = [0, 0];
@@ -253,6 +254,7 @@ export class Match {
     this.rally = 0; this.state = 'playing';
     this.awaitingServe = true;
     this.aiBrain = createAIBrain();
+    this.aiSmash = {phase:"idle", next:0};
     this.events.length = 0;
   }
   setButton(key, down) {
@@ -274,6 +276,24 @@ export class Match {
     this.events.push({ ...event, time: this.time });
     if (this.events.length > 100) this.events.shift();
   }
+  chooseSmashTarget(fallback) {
+    const state=this.aiSmash, p=this.puck, ai=this.ai, cfg=this.cfg;
+    const speeds={guard:5,bruiser:4.2,banker:3.8,rush:3.5,showboat:3.2,erratic:4,adaptive:2.5};
+    const safe=p.z>1.0 && p.z<3.55 && magnitude(p.vx,p.vz)<1.3;
+    if(state.phase==='idle' && this.time>=state.next && safe && Math.abs(ai.x-p.x)<.6 && ai.z>p.z+.5){
+      const retreat=Math.min(cfg.length/2-cfg.paddleRadius-.08, Math.max(ai.z+.45,p.z+1.35));
+      if(retreat>ai.z+.20){state.phase='retreat';state.target=retreat;state.started=this.time;}
+    }
+    if(state.phase!=='idle' && (!safe || this.time-state.started>2.5)){
+      state.phase='idle';state.next=this.time+(speeds[cfg.aiStyle]??4);return fallback;
+    }
+    if(state.phase==='retreat'){
+      if(ai.z>=state.target-.12 && ai.vz<1.2)state.phase='strike';
+      else return {x:p.x,z:state.target};
+    }
+    if(state.phase==='strike')return {x:p.x,z:Math.max(cfg.paddleRadius+.08,p.z-.5)};
+    return fallback;
+  }
   tick() {
     if (this.state !== 'playing') return;
     const cfg = this.cfg, dt = cfg.tick, puck = this.puck;
@@ -290,13 +310,14 @@ export class Match {
     const step = dt / steps;
     for (let k = 0; k < steps; k++) {
       applyDirectMove(this.player, direct, (k+1)/steps);
-      const aiTarget = this.awaitingServe && this.server === 1
+      let aiTarget = this.awaitingServe && this.server === 1
         ? { x: puck.x, z: Math.max(cfg.paddleRadius + .08, puck.z - .52) }
         : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
+      if (!remote && cfg.aiStyle) aiTarget = this.chooseSmashTarget(aiTarget);
       if(remote){const p={};applyDirectMove(p,remote,(k+1)/steps);Object.assign(this.ai,{x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});}
       else moveToward(this.ai, aiTarget, step, cfg, true);
       updateStroke(this.player, step, cfg);
-      if (remote) updateStroke(this.ai, step, cfg);
+      if (remote || cfg.aiStyle) updateStroke(this.ai, step, cfg);
       puck.angle = ((puck.angle ?? 0) + puck.spin * step) % (2 * Math.PI);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
@@ -316,7 +337,7 @@ export class Match {
             this.record({ type: 'serve', by: label });
           }
           this.hits++; this.rally++;
-          if (label === 'ai') recordAIHit(this.aiBrain, this.time);
+          if (label === 'ai') { recordAIHit(this.aiBrain, this.time); if(this.aiSmash.phase !== 'idle'){this.aiSmash.phase='idle';this.aiSmash.next=this.time+4;} }
           this.record({ type: 'impact', by: label, ...puck.lastImpact });
           puck.lastImpact = null;
         }
