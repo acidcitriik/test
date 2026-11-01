@@ -92,7 +92,13 @@ export function updateStroke(p, dt, cfg) {
   const preparation = clamp(run / .30, 0, 1);
   // Acceleration contributes only after actual travel, never as an impulse spike.
   const commitment = clamp(pace * preparation * (1 + .20 * clamp(acceleration / 60, -1, 1)), 0, 1);
-  p.stroke = {vx,vz,speed,acceleration,run,commitment};
+  // Measure a short backswing towards the player's own end. Its contribution
+  // fades with time, so an old movement cannot be saved for a later strike.
+  const backswing = Math.min(.55, (previous.backswing ?? 0) * Math.exp(-dt / .55)
+    + Math.max(0, p.vz * (p.side ?? -1)) * dt);
+  const approach = clamp(-p.vz * (p.side ?? -1) / 5, 0, 1);
+  const smash = clamp(backswing / .22, 0, 1) * approach * commitment;
+  p.stroke = {vx,vz,speed,acceleration,run,commitment,backswing,smash};
 }
 
 // Collision impulse of a disk against a driven paddle.
@@ -113,7 +119,10 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   const strokeSpeed = magnitude(paddle.vx, paddle.vz);
   const driveBlend = clamp((strokeSpeed - 1.5) / 4.5, 0, 1);
   const commitment = paddle.stroke?.commitment ?? driveBlend * driveBlend * (3 - 2 * driveBlend);
-  const drive = .45 + .55 * commitment;
+  // A prepared, accelerating forward stroke can hit harder; gentle touches
+  // retain their existing response. Future motion never changes a past hit.
+  const smash = paddle.stroke?.smash ?? 0;
+  const drive = (.45 + .55 * commitment) * (1 + .45 * smash);
   // The measured gesture cannot push after the paddle stops or reverses.
   // Project the filtered speed onto the current movement direction and cap it
   // at the actual speed, so stale momentum cannot supply energy at contact.
@@ -149,7 +158,7 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   puck.vz += tangentImpulse * tz;
   puck.spin -= 2 * tangentImpulse / radius;
   const capped = limitPuckSpeed(puck);
-  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped };
+  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped, smash };
   return true;
 }
 
