@@ -12,6 +12,7 @@ import {TABLE_CALIBRATION,createTableProjection} from './table-projection.js';
 import {GREEN_DEBUG_OVERLAY} from './green-debug-overlay.js';
 import {DEFAULT_PADDLE_OFFSETS,normalizePaddleOffset,offsetSpriteY,OFFSET_MIN,OFFSET_MAX} from './paddle-offset.js';
 import {ARCADE_ORDER,nextArcadeLevel,stageIdFor} from './campaign.js';
+import {SPLASH_FILES,randomReadyDelayMs,chooseRoundSplash,GO_DURATION_MS,GOAL_DURATION_MS,RESULT_DURATION_MS} from './round-presentation.js';
 
 const NATIVE={w:1672,h:941};
 // Stage-normalised portrait height. Every real opponent stays behind the far rail.
@@ -21,6 +22,32 @@ const panel=$('panel'),backdrop=$('backdrop'),arena=$('arena');
 const bg=backdrop.getContext('2d',{alpha:false});
 const ctx=arena.getContext('2d');
 const hud=$('hud'),touchBar=$('touchBar');
+const announcement=document.createElement('div');
+announcement.id='roundAnnouncement';announcement.hidden=true;
+announcement.innerHTML='<img id="roundAnnouncementImage" alt="" draggable="false"/>';
+$('app').appendChild(announcement);
+const announcementImage=announcement.querySelector('img');
+let roundAnnouncement=null;
+function clearRoundAnnouncement(){
+ roundAnnouncement=null;announcement.hidden=true;
+ announcement.removeAttribute('data-kind');
+ announcementImage.removeAttribute('src');
+}
+function presentRoundSplash(kind,duration,then=null){
+ if(!(kind in SPLASH_FILES))throw new Error('Unknown round splash: '+kind);
+ roundAnnouncement={kind,until:performance.now()+duration,then};
+ announcement.dataset.kind=kind;
+ announcementImage.src=SPLASH_FILES[kind];
+ announcementImage.alt=kind==='ready'?'Players ready?':kind==='win'?'YOU WIN':kind==='lose'?'YOU LOSE':kind.toUpperCase();
+ announcement.hidden=false;
+}
+function updateRoundAnnouncement(now){
+ if(!roundAnnouncement||now<roundAnnouncement.until)return;
+ const callback=roundAnnouncement.then;
+ clearRoundAnnouncement();
+ if(callback)callback();
+}
+
 const images={stages:{},characters:{},sprites:{},halEye:null};
 let halGaze={x:HAL_EYE_CALIBRATION.x,y:HAL_EYE_CALIBRATION.y};
 let network=null, networkSlot=0, networkTimer=null;
@@ -64,7 +91,7 @@ const statusText=()=>{
   }
   return 'PREMIER À 7';
 };
-function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
+function setScreen(name,compact=false){if(name!=='playing')clearRoundAnnouncement();screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
   stopNetwork();online.stop();if($('connectionDebug'))$('connectionDebug').hidden=true;
@@ -159,17 +186,31 @@ function beginMatch(){
   $('hudLevel').textContent=mode==='arcade'?`${String(level+1).padStart(2,'0')} / 07`:'GRID 00';
   touchBar.hidden=!isTouch();
   if(isTouch())selectTouchMode(inputMode);
-  resume();
+  startOpeningRound();
+}
+function ensurePointerLock(){
+ if(!isTouch()&&!pointerRequested){
+  pointerRequested=true;
+  const lock=arena.requestPointerLock?.();
+  if(lock?.catch)lock.catch(()=>{pointerRequested=false;});
+ }
+}
+function startOpeningRound(){
+ panel.innerHTML='';
+ setScreen('playing');
+ active=false;accumulator=0;lastTime=0;
+ // Only round one of a NEW duel gets this announcement. The stationary
+ // central puck and both paddles remain frozen until GO has finished.
+ ensurePointerLock();
+ presentRoundSplash('ready',randomReadyDelayMs(),()=>{
+  presentRoundSplash('go',GO_DURATION_MS,()=>resume());
+ });
 }
 function resume(){
   panel.innerHTML='';setScreen('playing');
   active=true;accumulator=0;lastTime=0;
   if(match?.state==='ready')match.serve();
-  if(!isTouch() && !pointerRequested){
-    pointerRequested=true;
-    const lock=arena.requestPointerLock?.();
-    if(lock?.catch)lock.catch(()=>{pointerRequested=false;});
-  }
+  ensurePointerLock();
 }
 function buttonAction(action){
   if(action==='downloadLog'){downloadRoundLog();}
@@ -367,17 +408,7 @@ function drawCollisionBody(obj,type){
  ctx.fillStyle=GREEN_DEBUG_OVERLAY.colliderIndicator;ctx.fill();
  ctx.restore();
 }
-function drawSmashEffect(obj){
- const center=project(obj.x,obj.z);
- const {rx,ry}=projectedRadius(obj.x,obj.z,match.cfg.puckRadius);
- ctx.save();
- ctx.shadowColor='#ff6100';ctx.shadowBlur=20*layout.scale;
- ctx.strokeStyle='#ff8a25';ctx.lineWidth=5*layout.scale;
- ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.35,ry*1.35,0,0,Math.PI*2);ctx.stroke();
- ctx.shadowBlur=8*layout.scale;ctx.strokeStyle='#fff4ae';ctx.lineWidth=2*layout.scale;
- ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.24,ry*1.24,0,0,Math.PI*2);ctx.stroke();
- ctx.restore();
-}
+// Smash is signalled by the scoring splash, not an unwanted orange halo around the puck.
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
  const img=images.sprites[type];
@@ -408,7 +439,7 @@ function drawObject(obj,type){
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
   ctx.fillStyle=GREEN_DEBUG_OVERLAY[type==='puck'?'puckFill':type==='ai'?'aiFill':'playerFill'];ctx.fill();
  }
- if(type==='puck' && obj.smashActive)drawSmashEffect(obj);
+ // No yellow/orange ring around the puck during a SMASH.
 }
 function drawHalEye(dt){
   if(currentStage!==HAL_STAGE_ID||!match)return;
@@ -591,13 +622,29 @@ function updateHud(){if(!match)return;
 function frame(time){
   requestAnimationFrame(frame);
   const dt=lastTime?Math.min(.04,(time-lastTime)/1000):0;lastTime=time;
+  updateRoundAnnouncement(time);
   if(active&&match&&mode!=='multi'){
     accumulator+=dt;
     let steps=0;
     while(accumulator>=match.cfg.tick&&steps<8){match.tick();accumulator-=match.cfg.tick;steps++;}
     if(steps===8)accumulator=0;
-    if(match.state==='over'){showMatchEnd();}
-    else if(match.state==='ready'){showPoint();}
+    if(match.state==='over'||match.state==='ready'){
+      active=false;
+      const goal=match.events.findLast(e=>e.type==='goal');
+      if(goal){
+        const type=chooseRoundSplash(goal,match.scores,match.cfg.scoreToWin);
+        const final=match.state==='over';
+        // Unlike the old point modal, this is an overlay over live arena art.
+        // Automatically restart after a normal goal; show result after point 7.
+        presentRoundSplash(type,final?RESULT_DURATION_MS:GOAL_DURATION_MS,
+          final?()=>showMatchEnd():()=>resume());
+      }else if(match.state==='over'){
+        showMatchEnd();
+      }else{
+        // Time-limit infractions still use the existing service-transfer UI.
+        showPoint();
+      }
+    }
   }
   if(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth && !frame.stageReady){drawBackdrop();frame.stageReady=true;}
   if(screen==='playing'||screen==='pause'||screen==='calibration'||screen==='point'||screen==='result'){drawActors(dt);updateHud();}
@@ -648,6 +695,8 @@ window.__synthpuck=Object.freeze({
   snapshot:()=>({screen,mode,level,opponent:opponent.id,stage:currentStage,
     score:match?[...match.scores]:null,state:match?.state??null,
     ready:Boolean(images.stages[currentStage]?.complete&&images.stages[currentStage].naturalWidth),
+    active,roundSplash:roundAnnouncement?.kind??null,
+    roundSplashRemainingMs:roundAnnouncement?Math.max(0,Math.ceil(roundAnnouncement.until-performance.now())):null,
     spriteSizes:Object.fromEntries(Object.entries(images.sprites).map(([type,img])=>[type,[img.naturalWidth||0,img.naturalHeight||0]])),
     viewport:{width:layout.cssW,height:layout.cssH},
     uiArtReady,
