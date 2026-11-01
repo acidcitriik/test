@@ -3,7 +3,7 @@ import {playerAuth} from './player-auth.js?v=online-20261101-3';
 import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=ai-smash-20261101-8';
-import {Match,clamp,magnitude} from './physics.js?v=ai-smash-20261101-8';
+import {Match,clamp,magnitude} from './physics.js?v=palet-rules-20261101-1';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
@@ -36,7 +36,20 @@ const statBar=(value,accent)=>`<div class="meter" style="--accent:${accent}">${A
 const statsHtml=c=>`<div class="stats" style="--accent:${c.accent}">${STAT_NAMES.map((title,i)=>`<div class="stat-line"><label>${title}</label>${statBar(c.stats[i],c.accent)}</div>`).join('')}</div>`;
 const avatar=c=>`<img loading="eager" src="./assets/characters/${c.id}.webp?v=fighters-hd-20261031" alt="Portrait de ${c.name}"/>`;
 const btn=(label,action,primary=false)=>`<button class="btn ${primary?'primary':''}" data-action="${action}" type="button">${label}</button>`;
-const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':'SERVICE ADVERSAIRE'):'PREMIER À 7';
+const statusText=()=>{
+  if(!match)return 'PREMIER À 7';
+  if(match.state==='ready')return match.server===-1?'À TOI D’ENGAGER':'ENGAGEMENT ADVERSE';
+  if(match.awaitingServe){
+    if(match.server===0)return 'PALET AU CENTRE';
+    const left=Math.max(0,Math.ceil(match.cfg.serveLimit-(match.time-match.serveStartedAt)));
+    return (match.server===-1?'TON SERVICE · ':'SERVICE IA · ')+left+' S';
+  }
+  if(match.possessionSide && match.possessionSince!==null){
+    const left=Math.max(0,Math.ceil(match.cfg.returnLimit-(match.time-match.possessionSince)));
+    return 'RENVOI · '+left+' S';
+  }
+  return 'PREMIER À 7';
+};
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
@@ -84,9 +97,11 @@ function downloadRoundLog(){
 }
 function showPoint(){
   active=false;
-  setScreen('point',true);const last=match.events.findLast(e=>e.type==='goal');
-  const won=last?.scorer===0;
-  panel.innerHTML=`<div class="compact-center"><p class="eyebrow">${opponent.name}</p><h2 class="${won?'win':'lose'}">${won?'POINT !':'POINT ADVERSE'}</h2><p class="sub">${match.scores[0]} : ${match.scores[1]} · ${statusText()}</p>${btn('CONTINUER','resume',true)}${logButton()}</div>`;
+  setScreen('point',true);const last=match.events.findLast(e=>e.type==='goal'||e.type==='timeout');
+  const timeout=last?.type==='timeout',won=timeout?last.offender===1:last?.scorer===0;
+  const title=timeout?'DÉLAI DÉPASSÉ':won?'POINT !':'POINT ADVERSE';
+  const detail=timeout?(last.reason==='serve'?'10 secondes pour engager':'7 secondes pour renvoyer')+' · pas de point':statusText();
+  panel.innerHTML=`<div class="compact-center"><p class="eyebrow">${opponent.name}</p><h2 class="${won?'win':'lose'}">${title}</h2><p class="sub">${match.scores[0]} : ${match.scores[1]} · ${detail}</p><p class="sub">${statusText()}</p>${btn('CONTINUER','resume',true)}${logButton()}</div>`;
   document.exitPointerLock?.();
 }
 function showMatchEnd(){
@@ -496,6 +511,10 @@ async function connectMultiplayer(action,suppliedCode=null,inviteTarget=null){
       match.scores=networkSlot?[...d.scores].reverse():d.scores;
       match.state=d.state;match.server=networkSlot?-d.server:d.server;
       match.awaitingServe=d.awaitingServe;
+      match.time=d.time??match.time;
+      match.serveStartedAt=d.serveStartedAt??match.serveStartedAt;
+      match.possessionSide=networkSlot?-(d.possessionSide??0):(d.possessionSide??0);
+      match.possessionSince=d.possessionSince??null;
       if(d.state==='over'){
         active=false;clearInterval(networkTimer);setScreen('result',true);
         panel.innerHTML='<div class="compact-center"><h2>'+
