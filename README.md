@@ -63,19 +63,22 @@ Ce jalon constitue le **jeu solo local**. Aucun matchmaking, compte, ELO, serveu
 - Score et plaques HUD ancrés à la zone de la scène 1672 × 941 (et non aux bandes noires du viewport), libellés intégrés dans les panneaux, nom d’adversaire redondant masqué.
 - Vérifications visuelles automatisées à 1672 × 941 et 1780 × 800, plus six captures individuelles des adversaires.
 
-## Multijoueur 1v1
+## Multijoueur 1v1 dans le navigateur
 
-Installer Node.js puis lancer dans le dossier du jeu :
+Depuis le site, choisir MULTIJOUEUR puis CRÉER UNE PARTIE. Copier le code affiché et le transmettre à son ami. Celui-ci ouvre le même site, colle le code puis choisit REJOINDRE. Aucun programme ni serveur local à démarrer.
 
-```sh
-npm install
-npm start
-```
+Le navigateur du créateur calcule la physique à pas fixe 120 Hz et transmet les états à 60 Hz via WebRTC. Garder son onglet ouvert et visible ; les navigateurs peuvent ralentir les onglets en arrière-plan. Chaque joueur voit sa raquette en bas. Premier à 7, engagement après 1,5 seconde suivant un but.
 
-Ouvrir http://localhost:3000, puis MULTIJOUEUR et CRÉER UNE PARTIE. Communiquer le code à six chiffres. Le second joueur ouvre http://ADRESSE_IP_HOTE:3000, puis MULTIJOUEUR, saisit le code et choisit REJOINDRE. Sur le même ordinateur, deux fenêtres suffisent.
+PeerJS Cloud assure la mise en relation ; les données de jeu passent directement entre les navigateurs. Une connexion Internet est nécessaire. Certains réseaux (NAT symétrique, réseaux professionnels) nécessitent un relais TURN, non fourni dans cette version. Aucune garantie de connexion sur ces réseaux. Pas de reconnexion ni compensation avancée de latence. Quitter ferme la partie.
 
-Les deux joueurs utilisent le même serveur. Pour Internet, utiliser un réseau privé virtuel entre les deux ordinateurs ou configurer une redirection du port TCP 3000 et le pare-feu. Le code ne traverse pas à lui seul les box. Le serveur écoute sur toutes les interfaces. Pour ce prototype privé, les communications HTTP/WS ne sont pas chiffrées : utiliser le réseau privé pour tester à distance. Une page HTTPS exige un serveur WSS.
+La bibliothèque PeerJS est distribuée localement dans src/vendor avec sa licence. Le serveur Node optionnel reste disponible avec npm start pour le développement local.
 
-Le serveur calcule la physique à pas fixe de 120 Hz et diffuse jusqu’à 60 états par seconde. Chaque joueur voit sa raquette en bas. Premier à 7 ; service automatique après 1,5 seconde suivant un but. Pas de pause réseau ; quitter ferme la partie. Le serveur doit rester actif. Cette version est destinée aux tests entre amis : pas de reconnexion, d’authentification ni de compensation avancée de latence.
+Tests : npm test. Le test tests/multiplayer-browser.mjs utilise deux navigateurs Edge, le site local sur le port 3000 et le service PeerJS réel.
 
-Vérification : npm test ; avec le serveur actif, npm run test:network.
+### Relais Cloudflare pour les essais privés
+
+Le jeu demande maintenant un code privé de relais, conservé uniquement dans sessionStorage. Ce code est partagé entre les deux testeurs ; il ne s’agit pas de la clé API Cloudflare. Le Worker https://synthpuck-turn.acidcitriik.workers.dev génère des accès TURN valables deux heures. Sa clé API reste dans un secret Cloudflare. Les parties de plus de deux heures nécessitent une nouvelle connexion.
+
+Le code du Worker est dans cloudflare/turn-worker.js. Secrets à configurer dans Cloudflare : TURN_KEY_ID, TURN_API_TOKEN, RELAY_ACCESS_CODE. Aucun de ces secrets ne doit être commité. L’origine autorisée est https://acidcitriik.github.io. Le code privé protège l’accès aux identifiants temporaires ; CORS seul ne protège pas le quota. Ce mécanisme est prévu pour des tests privés, pas pour un lancement public.
+
+Test réel : définir SYNTHPUCK_RELAY_ACCESS dans l’environnement puis lancer node tests/cloudflare-relay.mjs, avec le serveur local actif. Le test impose TURN en TLS sur le port 443 et vérifie le refus d’un mauvais code.

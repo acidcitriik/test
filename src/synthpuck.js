@@ -1,3 +1,5 @@
+import {cloudflareConfiguration} from './ice-config.js';
+import {BrowserHost} from './browser-host.js';
 import {Match,clamp,magnitude} from './physics.js';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
@@ -32,7 +34,7 @@ const statusText=()=>match?.awaitingServe?(match.server===-1?'À TOI DE SERVIR':
 function setScreen(name,compact=false){screen=name;panel.className=compact?'compact':'';panel.removeAttribute('hidden');panel.setAttribute('data-screen',name);$('fighterName').hidden=true;}
 function showSplash(){setScreen('splash');hud.hidden=true;touchBar.hidden=true;panel.innerHTML=`<img class="studio-image" src="./assets/ui/studio-splash-hd.avif" alt="PiperadeGames présente : logo peint avec un seul piment rouge"/>`;}
 function showMenu(){
-  stopNetwork();
+  stopNetwork();if($('connectionDebug'))$('connectionDebug').hidden=true;
   active=false;touchId=null;mode='arcade';currentStage='mamouda';setBackground(currentStage,false);
   setScreen('menu');hud.hidden=true;touchBar.hidden=true;$('fighterName').hidden=true;
   panel.innerHTML=`<div class="menu-art"><div class="menu-image" role="img" aria-label="SYNTHPUCK, Strike Spin Survive, menu illustré néon BD"></div><nav class="menu menu-hotspots" aria-label="Menu principal">${btn('ARCADE','arcade',true)}${btn('ENTRAÎNEMENT','training')}${btn('MULTIJOUEUR','multi')}<button class="btn" disabled aria-disabled="true">EXIT</button></nav></div>`;
@@ -248,21 +250,52 @@ function spriteGeometry(obj,type){
  const height=width*sourceHeight/sourceWidth;
  return {x:p.x-width/2,y:p.y-height*sprite.anchor,width,height};
 }
+function drawCollisionBody(obj,type){
+ const radius=match.cfg[type==='puck'?'puckRadius':'paddleRadius'];
+ ctx.save();
+ ctx.fillStyle='#16e65b66';ctx.strokeStyle='#39ff75';
+ ctx.lineWidth=2*layout.scale;
+ ctx.beginPath();
+ for(let i=0;i<=64;i++){
+  const angle=i/64*Math.PI*2;
+  const p=project(obj.x+Math.cos(angle)*radius,obj.z+Math.sin(angle)*radius);
+  if(i===0)ctx.moveTo(p.x,p.y);else ctx.lineTo(p.x,p.y);
+ }
+ ctx.closePath();ctx.fill();ctx.stroke();
+ const center=project(obj.x,obj.z);
+ const tip=project(obj.x+Math.cos(obj.angle??0)*radius*.85,obj.z+Math.sin(obj.angle??0)*radius*.85);
+ ctx.beginPath();ctx.moveTo(center.x,center.y);ctx.lineTo(tip.x,tip.y);ctx.stroke();
+ ctx.beginPath();ctx.arc(center.x,center.y,2.5*layout.scale,0,Math.PI*2);ctx.fillStyle='#39ff75';ctx.fill();
+ ctx.restore();
+}
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
  const img=images.sprites[type];
  if(img?.complete&&img.naturalWidth){
   ctx.save();
+  ctx.globalAlpha=.30;
   ctx.imageSmoothingEnabled=true;
   ctx.imageSmoothingQuality='high';
   ctx.shadowColor='#030712b8';ctx.shadowBlur=5*layout.scale;
   ctx.drawImage(img,x,y,width,height);
+  if(type==='puck'){
+   // Rotate the top-face markings in the table plane, preserving perspective
+   // and the fixed lighting/thickness of the original disk artwork.
+   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg.puckRadius);
+   ctx.shadowBlur=0;
+   ctx.translate(p.x,p.y-rx*.12);ctx.scale(rx*.68,rx*.30);
+   ctx.rotate(-(obj.angle??0));
+   ctx.strokeStyle='#12394bd9';ctx.lineWidth=.16;ctx.lineCap='round';
+   ctx.beginPath();ctx.moveTo(.30,0);ctx.lineTo(.83,0);ctx.stroke();
+   ctx.fillStyle='#f4feff';ctx.beginPath();ctx.arc(-.52,0,.13,0,Math.PI*2);ctx.fill();
+  }
   ctx.restore();
  }else{
   const p=project(obj.x,obj.z),{rx}=projectedRadius(obj.x,obj.z,match.cfg[type==='puck'?'puckRadius':'paddleRadius']);
   ctx.beginPath();ctx.ellipse(p.x,p.y,rx,rx*.48,0,0,Math.PI*2);
-  ctx.fillStyle=type==='player'?'#4ce3ff':type==='ai'?'#ff4865':'#f0faff';ctx.fill();
+  ctx.fillStyle='#16e65b44';ctx.fill();
  }
+ drawCollisionBody(obj,type);
 }
 function drawHalEye(dt){
   if(currentStage!==HAL_STAGE_ID||!match)return;
@@ -318,22 +351,35 @@ function drawActors(dt=0){ctx.clearRect(0,0,layout.cssW,layout.cssH);if(!match)r
   drawPhysicalTableWalls();
 }
 function stopNetwork(){
+  connectionAttempt=null;
   clearInterval(networkTimer);networkTimer=null;
   if(network){network.onclose=null;network.close();network=null;}
 }
+let connectionAttempt=null;
+let connectionReport='';
+function updateConnectionDebug(report){
+  connectionReport=report;
+  let box=$('connectionDebug');
+  if(!box){box=document.createElement('details');box.id='connectionDebug';box.open=true;box.innerHTML='<summary>Diagnostic de connexion</summary><p>Rapport sans adresses IP. Les ports indiqués sont ceux des candidats WebRTC.</p><button type="button" id="downloadDebug">Télécharger le rapport</button><pre id="connectionLog"></pre>';document.body.append(box);
+    $('downloadDebug').onclick=()=>{const url=URL.createObjectURL(new Blob([connectionReport],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='synthpuck-connexion.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+  }
+  box.hidden=false;$('connectionLog').textContent=report;const log=$('connectionLog');log.scrollTop=log.scrollHeight;
+}
 function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
-  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><label>Adresse du serveur <input id="serverAddress" placeholder="ws://192.168.1.10:3000" /></label><p class="sub">Les deux joueurs doivent utiliser le même serveur.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" inputmode="numeric" maxlength="6" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
-  $('lobbyStatus').textContent=message;
-  $('serverAddress').value=location.protocol==='https:'?'wss://'+location.host:'ws://'+location.host;
+  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p><label>Code privé du relais Cloudflare <input id="relayAccess" type="password" autocomplete="off" /></label><p class="sub">Pour votre test privé, utilisez le même code de relais sur les deux appareils.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
+  $('lobbyStatus').textContent=message;try{$('relayAccess').value=sessionStorage.getItem('synthpuckRelayAccess')||'';}catch{}
+
 }
-function connectMultiplayer(action){
-  const address=$('serverAddress').value.trim(),code=$('roomCode').value.trim();
-  if(action==='join'&&!/^\d{6}$/.test(code)){$('lobbyStatus').textContent='Saisis un code à six chiffres.';return;}
-  stopNetwork();let ws;
-  try{ws=new WebSocket(address);}catch{showLobby('Adresse du serveur invalide.');return;}network=ws;
+async function connectMultiplayer(action){
+  const code=$('roomCode').value.trim();
+  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
+  const access=$('relayAccess').value.trim();if(!access){$('lobbyStatus').textContent='Saisis le code privé du relais Cloudflare.';return;}
+  stopNetwork();let ws;const attempt=Symbol();connectionAttempt=attempt;$('lobbyStatus').textContent='Préparation du relais Cloudflare…';
+  try{const config=await cloudflareConfiguration(access);if(connectionAttempt!==attempt||screen!=='lobby')return;try{sessionStorage.setItem('synthpuckRelayAccess',access);}catch{}ws=new BrowserHost(config);}catch(e){if(connectionAttempt===attempt&&screen==='lobby')showLobby('Initialisation impossible : '+e.message);return;}network=ws;
+  ws.debug.onchange=updateConnectionDebug;updateConnectionDebug(ws.debug.report());
   $('lobbyStatus').textContent='Connexion…';
-  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Serveur inaccessible. Vérifie son adresse et le pare-feu.');}},10000);
+  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);
   ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};
   ws.onclose=()=>{if(network!==ws)return;stopNetwork();showLobby('Connexion interrompue. Recrée ou rejoins une partie.');};
   ws.onerror=()=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Connexion impossible : vérifie le serveur et son adresse.';};

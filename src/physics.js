@@ -7,7 +7,7 @@ export const DEFAULTS = Object.freeze({
   paddleRadius: 0.37, puckRadius: 0.17,
   maxSpeed: 8.5, acceleration: 54, brake: 66,
   wallRestitution: 0.94, paddleRestitution: 0.96,
-  friction: 0.25, drag: 0.09, spinDrag: 0.50,
+  friction: 0.25, paddleGrip: 0.65, wallFriction: 0.32, gestureTransfer: 0.40, drag: 0.09, spinDrag: 0.32,
   aiSpeed: 6.7, aiAcceleration: 36,
   tick: 1 / 120, scoreToWin: 7
 });
@@ -67,6 +67,27 @@ export function applyDirectMove(p, move, progress) {
   p.vx = move.vx; p.vz = move.vz;
 }
 
+// Short motion memory belongs to the physical paddle, never to a mouse event.
+// A reversal starts a new stroke; stopping dissipates preparation quickly.
+export function updateStroke(p, dt, cfg) {
+  const previous = p.stroke ?? {vx:0, vz:0, speed:0, run:0};
+  const alpha = 1 - Math.exp(-dt / .035);
+  const vx = previous.vx + (p.vx - previous.vx) * alpha;
+  const vz = previous.vz + (p.vz - previous.vz) * alpha;
+  const speed = magnitude(vx, vz);
+  const acceleration = (speed - previous.speed) / dt;
+  const aligned = p.vx * previous.vx + p.vz * previous.vz > 0;
+  // Only travel at the current pace counts: a slow approach cannot bank power.
+  const retention = aligned ? Math.exp(-dt / .10) * Math.min(1, speed / Math.max(previous.speed, EPS)) : 0;
+  const run = previous.run * retention + Math.min(magnitude(p.vx,p.vz), cfg.maxSpeed) * dt
+    * clamp((speed - 1) / 3, 0, 1);
+  const pace = clamp((speed - 1.5) / 4.5, 0, 1);
+  const preparation = clamp(run / .30, 0, 1);
+  // Acceleration contributes only after actual travel, never as an impulse spike.
+  const commitment = clamp(pace * preparation * (1 + .20 * clamp(acceleration / 60, -1, 1)), 0, 1);
+  p.stroke = {vx,vz,speed,acceleration,run,commitment};
+}
+
 // Collision impulse of a disk against a driven paddle.
 // Relative normal velocity controls restitution; tangential velocity creates spin.
 // The paddle is motor-driven, so the external motor may supply energy.
@@ -79,19 +100,37 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   const nz = distance > EPS ? dz / distance : -paddle.side;
   puck.x += nx * (minDistance - distance + 1e-5);
   puck.z += nz * (minDistance - distance + 1e-5);
-  const relativeNormal = (puck.vx - paddle.vx) * nx + (puck.vz - paddle.vz) * nz;
+  // Finite drive response: a light nudge transfers only part of the paddle
+  // speed, while a deliberate stroke progressively engages the full drive.
+  // This models a heavier disk without changing direct pointer positioning.
+  const strokeSpeed = magnitude(paddle.vx, paddle.vz);
+  const driveBlend = clamp((strokeSpeed - 1.5) / 4.5, 0, 1);
+  const commitment = paddle.stroke?.commitment ?? driveBlend * driveBlend * (3 - 2 * driveBlend);
+  const drive = .45 + .55 * commitment;
+  const driveX = (paddle.stroke?.vx ?? paddle.vx) * drive;
+  const driveZ = (paddle.stroke?.vz ?? paddle.vz) * drive;
+  const relativeNormal = (puck.vx - driveX) * nx + (puck.vz - driveZ) * nz;
   if (relativeNormal >= -EPS) return false;
-  const restitution = mode === 'rigid' ? .99 : mode === 'soft' ? .46
+  const fullRestitution = mode === 'rigid' ? .99 : mode === 'soft' ? .46
     : mode === 'grip' ? .79 : cfg.paddleRestitution;
-  const friction = mode === 'grip' ? .92 : mode === 'soft' ? .60 : cfg.friction;
+  // Gentle contacts push rather than spring away. Blend continuously into
+  // full restitution for deliberate strikes; no minimum launch impulse.
+  const contactSpeed = -relativeNormal;
+  const touchBlend = clamp((contactSpeed - .35) / 3.65, 0, 1);
+  const smoothBlend = touchBlend * touchBlend * (3 - 2 * touchBlend);
+  const restitution = fullRestitution * (.12 + .88 * smoothBlend);
+  const friction = mode === 'grip' ? .92 : mode === 'soft' ? .60 : cfg.paddleGrip;
   const normalImpulse = -(1 + restitution) * relativeNormal;
   puck.vx += normalImpulse * nx;
   puck.vz += normalImpulse * nz;
   const tx = -nz, tz = nx, radius = cfg.puckRadius;
-  const tangentialVelocity = (puck.vx - paddle.vx) * tx
-    + (puck.vz - paddle.vz) * tz - puck.spin * radius;
+  const tangentialVelocity = (puck.vx - driveX) * tx
+    + (puck.vz - driveZ) * tz - puck.spin * radius;
   // Disk inertia I = (1/2)m*r^2; the effective tangential inverse mass = 3/m.
-  const tangentImpulse = clamp(-tangentialVelocity / 3,
+  // A driven paddle carries a lateral stroke through the contact patch.
+  // Keep its contribution bounded by contact pressure, including on glancing hits.
+  const gesture = (driveX * tx + driveZ * tz) * cfg.gestureTransfer * (.25 + .75 * smoothBlend);
+  const tangentImpulse = clamp(-tangentialVelocity / 3 + gesture,
     -friction * normalImpulse, friction * normalImpulse);
   puck.vx += tangentImpulse * tx;
   puck.vz += tangentImpulse * tz;
@@ -110,7 +149,7 @@ function bounceRail(p, normalAxis, normalSign, cfg) {
   const tangentialVelocity = normalAxis === 'x'
     ? p.vz - normalSign * p.spin * radius
     : p.vx + normalSign * p.spin * radius;
-  const maxFrictionImpulse = cfg.friction * (1 + cfg.wallRestitution) * impactVelocity;
+  const maxFrictionImpulse = cfg.wallFriction * (1 + cfg.wallRestitution) * impactVelocity;
   const impulse = clamp(-tangentialVelocity / 3, -maxFrictionImpulse, maxFrictionImpulse);
   if (normalAxis === 'x') {
     p.vz += impulse;
@@ -155,7 +194,7 @@ export class Match {
     this.ai = { x: 0, z: 3.8, vx: 0, vz: 0, side: 1 };
     this.aiBrain = createAIBrain();
     this.target = { x: 0, z: -3.8 };
-    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, lastImpact: null }; // visible pre-serve rest position
+    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, angle: 0, lastImpact: null }; // visible pre-serve rest position
     this.scores = [0, 0];
     this.state = 'ready';
     this.server = -1; // first engagement belongs to the player
@@ -174,10 +213,11 @@ export class Match {
     // Neither player nor AI receives a pre-programmed impulse.
     this.puck.x = 0; this.puck.z = this.server * 2.35;
     this.puck.vx = 0; this.puck.vz = 0;
-    this.puck.spin = 0; this.puck.lastImpact = null;
+    this.puck.spin = 0; this.puck.angle = 0; this.puck.lastImpact = null;
     Object.assign(this.player, { x: 0, z: -3.8, vx: 0, vz: 0 });
     Object.assign(this.ai, { x: 0, z: 3.8, vx: 0, vz: 0 });
     Object.assign(this.target, { x: 0, z: -3.8 });
+    this.player.stroke = null; this.ai.stroke = null;
     this.rally = 0; this.state = 'playing';
     this.awaitingServe = true;
     this.aiBrain = createAIBrain();
@@ -219,6 +259,9 @@ export class Match {
         : chooseCharacterAITarget(puck, this.ai, this.player, cfg, this.aiBrain, this.time);
       if(remote){const p={};applyDirectMove(p,remote,(k+1)/steps);Object.assign(this.ai,{x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});}
       else moveToward(this.ai, aiTarget, step, cfg, true);
+      updateStroke(this.player, step, cfg);
+      if (remote) updateStroke(this.ai, step, cfg);
+      puck.angle = ((puck.angle ?? 0) + puck.spin * step) % (2 * Math.PI);
       puck.x += puck.vx * step;
       puck.z += puck.vz * step;
       for (const [paddle, label, mode] of [

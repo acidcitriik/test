@@ -42,7 +42,7 @@ try{
  assert.deepEqual(menuResolution,[1672,941],'Full-resolution menu image must load without stretching a small atlas');
  await page.screenshot({path:'synthpuck-title-preview.png'});
  assert.equal(await page.locator('.menu button').count(),4);
- assert.equal(await page.getByRole('button',{name:/OPTIONS/}).isDisabled(),true);
+ assert.equal(await page.getByRole('button',{name:/MULTIJOUEUR/}).isDisabled(),false);
  assert.equal(await page.getByRole('button',{name:/EXIT/}).isDisabled(),true);
  await page.getByRole('button',{name:'ARCADE'}).click();
  assert.equal((await page.evaluate(()=>__synthpuck.snapshot())).opponent,'mute');
