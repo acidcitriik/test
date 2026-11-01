@@ -5,6 +5,7 @@ import { chooseAITarget, createAIBrain } from '../src/ai.js';
 
 function simulateBehind({x,z,vx=0,vz=0,aiZ=2.25}, seconds=4) {
   const m=new Match({scoreToWin:99});m.serve();
+  m.awaitingServe=false; // synthetic in-play rear-recovery scenario
   Object.assign(m.ai,{x:0,z:aiZ,vx:0,vz:0});
   Object.assign(m.puck,{x,z,vx,vz,spin:0});
   const impacts=[];let rearBounce=false,atRear=false;
