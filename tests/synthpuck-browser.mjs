@@ -178,6 +178,48 @@ try{
  assert.equal(await page.locator('[data-pause-level]').count(),7,'Pause offers all seven Arcade stages');
  assert.equal(await page.locator('[data-pause-level="0"]').getAttribute('aria-current'),'step','Current stage is highlighted');
  await page.screenshot({path:'synthpuck-pause-levels-preview.png'});
+ // Calibration must be adjustable at an exact native-pixel offset with the
+ // collision centres and puck completely unchanged.
+ await page.getByRole('button',{name:'CALER LES RAQUETTES'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='calibration');
+ const beforeOffsets=await page.evaluate(()=>({
+  offsets:__synthpuck.snapshot().paddleOffsets,
+  player:__synthpuck.spriteGeometry('player',0,-3.8),
+  ai:__synthpuck.spriteGeometry('ai',0,3.8),
+  puck:__synthpuck.spriteGeometry('puck',0,0),
+  collision:__synthpuck.project(0,-3.8),
+  scale:__synthpuck.snapshot().arenaFrame.width/1672
+ }));
+ assert.equal(beforeOffsets.offsets.player,12);
+ assert.equal(beforeOffsets.offsets.ai,12);
+ await page.locator('#offset-number-player').fill('22');
+ await page.locator('#offset-number-ai').fill('31');
+ await page.waitForFunction(()=>{
+  const p=__synthpuck.snapshot().paddleOffsets;
+  return p.player===22&&p.ai===31;
+ });
+ const afterOffsets=await page.evaluate(()=>({
+  player:__synthpuck.spriteGeometry('player',0,-3.8),
+  ai:__synthpuck.spriteGeometry('ai',0,3.8),
+  puck:__synthpuck.spriteGeometry('puck',0,0),
+  collision:__synthpuck.project(0,-3.8),
+  savedPlayer:localStorage.getItem('synthpuck.spriteOffset.player'),
+  savedAi:localStorage.getItem('synthpuck.spriteOffset.ai'),
+  playerLabel:document.querySelector('#offset-label-player').textContent,
+  aiLabel:document.querySelector('#offset-label-ai').textContent
+ }));
+ assert.ok(Math.abs(afterOffsets.player.y-beforeOffsets.player.y-10*beforeOffsets.scale)<.0001,
+  'Player sprite must descend EXACTLY 10 additional native pixels');
+ assert.ok(Math.abs(afterOffsets.ai.y-beforeOffsets.ai.y-19*beforeOffsets.scale)<.0001,
+  'AI sprite must descend EXACTLY 19 additional native pixels');
+ assert.deepEqual(afterOffsets.puck,beforeOffsets.puck,'Puck remains unaffected by paddle calibration');
+ assert.deepEqual(afterOffsets.collision,beforeOffsets.collision,'Physics projection remains fixed');
+ assert.equal(afterOffsets.savedPlayer,'22');
+ assert.equal(afterOffsets.savedAi,'31');
+ assert.equal(afterOffsets.playerLabel,'+22 px');
+ assert.equal(afterOffsets.aiLabel,'+31 px');
+ await page.getByRole('button',{name:'RETOUR PAUSE'}).click();
+ await page.waitForFunction(()=>__synthpuck.snapshot().screen==='pause');
  await page.getByRole('button',{name:'Niveau 04 : MAMOUDA'}).click();
  await page.waitForFunction(()=>__synthpuck.snapshot().screen==='playing'&&__synthpuck.snapshot().stage==='mamouda');
  const jumped=await page.evaluate(()=>__synthpuck.snapshot());
