@@ -311,3 +311,46 @@
 #panel input{display:block;width:min(100%,420px);padding:12px;margin:10px 0 20px;background:#080c18;color:white;border:1px solid #48dfff;border-radius:6px;font:inherit}
 
 #connectionDebug{position:fixed;z-index:100;right:12px;top:12px;width:min(520px,calc(100vw - 24px));max-height:45vh;overflow:auto;background:#080c18f5;border:1px solid #48dfff;border-radius:8px;padding:12px;color:white;font:13px system-ui}#connectionDebug summary{cursor:pointer;font-weight:bold}#connectionDebug pre{white-space:pre-wrap;overflow:auto;max-height:26vh;font:11px monospace}#connectionDebug button{padding:8px;cursor:pointer}#connectionDebug[hidden]{display:none}
+
+
+/* Live paddle calibration: translucent, left-aligned instrument panel.
+   No change to the painted arena, HUD, physics, or other screens. */
+#panel[data-screen="calibration"]{
+  display:flex;
+  justify-content:flex-start;
+  align-items:center;
+  overflow-y:auto;
+  pointer-events:none;
+  background:transparent;
+  padding:clamp(8px,2vw,26px);
+}
+.paddle-calibration-panel{
+  pointer-events:auto;
+  width:min(350px,92vw);
+  max-height:90dvh;
+  overflow-y:auto;
+  padding:clamp(14px,2vw,22px);
+  border:1px solid #59bce7;
+  border-radius:8px;
+  background:rgba(5,13,29,.93);
+  box-shadow:0 8px 30px #0009;
+  display:grid;
+  gap:13px;
+}
+.paddle-calibration-panel h2{font-size:clamp(27px,4vw,43px)}
+.paddle-calibration-panel .sub{font-size:14px;line-height:1.35}
+.paddle-offset-row{display:grid;gap:5px}
+.paddle-offset-row label{font-weight:800;display:flex;justify-content:space-between;gap:12px}
+.paddle-offset-row output{font-variant-numeric:tabular-nums;color:#89e6ff}
+.paddle-offset-inputs{display:flex;align-items:center;gap:9px}
+#panel .paddle-offset-inputs input[type="range"]{
+  flex:1;min-width:0;width:auto;margin:3px 0;padding:0;
+  accent-color:#68dfff;border:0;background:transparent;
+}
+#panel .paddle-offset-inputs input[type="number"]{
+  width:75px;min-width:75px;flex:0 0 75px;
+  margin:0;padding:7px;text-align:center;
+  font-variant-numeric:tabular-nums;
+}
+.paddle-calibration-actions{display:grid;gap:6px}
+.paddle-calibration-panel .btn{font-size:17px;padding:7px 12px;min-height:34px}
