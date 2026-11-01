@@ -3,7 +3,7 @@ import {DEFAULT_AVATAR,AVATAR_CHOICES,normalizeAvatar,escapeHtml} from './player
 
 const launcher=document.getElementById('accountLauncher');
 const overlay=document.getElementById('accountOverlay');
-let view='login',notice='',busy=false,lastFocus=null;
+let view='login',notice='',busy=false,lastFocus=null,renderedContext='';
 const button=(label,action,primary=false)=>'<button type="button" class="account-button'+(primary?' primary':'')+'" data-account-action="'+action+'">'+escapeHtml(label)+'</button>';
 const field=(title,name,type,extra='')=>'<label class="account-field">'+title+'<input name="'+name+'" type="'+type+'" '+extra+' required></label>';
 const optionLabel={neutre:'Neutre / non genré',masculine:'Masculine',feminine:'Féminine',androgyne:'Androgyne',libre:'Libre / mixte',
@@ -18,10 +18,16 @@ function updateLauncher(){
   const s=playerAuth.snapshot();
   launcher.textContent=s.user?'JOUEUR : '+(s.profile?.nickname||'JOUEUR'):'COMPTE / INVITÉ';
 }
-function render(){
+function render({preserveEditing=false}={}){
   updateLauncher();
   if(overlay.hidden)return;
   const s=playerAuth.snapshot();
+  const context=[s.status,s.user?.id||'',s.recovery?'recovery':'',s.user?'profile':view].join('|');
+  // A token refresh or asynchronous profile lookup must never replace the
+  // focused input: replacing innerHTML loses focus and the unsaved draft.
+  if(preserveEditing && (busy || (context===renderedContext &&
+      overlay.contains(document.activeElement) &&
+      document.activeElement.matches('input,select,textarea'))))return;
   let body='';
   if(s.status==='disabled'){
     body='<p class="account-sub">Le jeu reste disponible en invité. Les comptes seront activés dès que le service Supabase sera configuré par l’administrateur.</p>'+
@@ -81,6 +87,7 @@ function render(){
     '<header class="account-header"><div><span class="account-tag">PIPERADEGAMES / SYNTHPUCK</span><h2 id="accountTitle">MON COMPTE JOUEUR</h2></div>'+
     '<button type="button" class="account-close" data-account-action="close" aria-label="Fermer">×</button></header>'+
     body+statusLine()+'<p class="account-footer">Tu peux jouer en invité sans jamais créer de compte.</p></div>';
+  renderedContext=context;
   if(busy)overlay.querySelectorAll('button,input,select').forEach(el=>{if(el.dataset.accountAction!=='close')el.disabled=true;});
 }
 function openAccount(){
@@ -102,18 +109,35 @@ function showNotice(value){
   const region=overlay.querySelector('#accountNotice');
   if(region)region.textContent=value;
 }
+function setBusy(value){
+  busy=value;
+  if(overlay.hidden)return;
+  overlay.querySelectorAll('button,input,select').forEach(el=>{
+    if(el.dataset.accountAction!=='close')el.disabled=value;
+  });
+}
 async function execute(operation,success){
   if(busy)return;
-  busy=true;render();
+  // Disable controls in place instead of replacing form nodes. In particular,
+  // failed saves keep the nickname, selected colors and unsaved avatar values.
+  setBusy(true);
   try{
     const result=await operation();
     if(success)success(result);
-    else showNotice('');
+    else notice='';
+    render();
   }catch(error){
     showNotice(error?.message||'Une erreur est survenue.');
-  }finally{busy=false;render();}
+  }finally{setBusy(false);}
 }
 launcher.addEventListener('click',openAccount);
+// Mouse, keyboard and touch input inside the modal must not reach the
+// global gameplay controller. Do not preventDefault: text entry, the
+// native color picker, selections and scrolling must keep working.
+for(const type of ['keydown','keyup','keypress','pointerdown','pointerup',
+  'mousedown','mouseup','touchstart','touchmove','touchend','wheel']){
+  overlay.addEventListener(type,event=>event.stopPropagation());
+}
 overlay.addEventListener('click',event=>{
   if(event.target===overlay){closeAccount();return;}
   const control=event.target.closest('[data-account-action]');
@@ -154,7 +178,7 @@ overlay.addEventListener('submit',event=>{
 document.addEventListener('keydown',event=>{
   if(event.key==='Escape'&&!overlay.hidden){event.preventDefault();event.stopPropagation();closeAccount();}
 },true);
-playerAuth.subscribe(()=>render());
+playerAuth.subscribe(()=>render({preserveEditing:true}));
 updateLauncher();
 void playerAuth.init();
 if(new URLSearchParams(location.search).has('auth')){
