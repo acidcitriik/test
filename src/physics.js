@@ -382,7 +382,7 @@ export class Match {
       const scorer = goal === 1 ? 1 : 0;
       this.scores[scorer]++;
       if(this.roundLog)Object.assign(this.roundLog,{endTime:this.time,scorer,scores:[...this.scores],hits:this.rally});
-      this.record({ type: 'goal', scorer, scores: [...this.scores] });
+      this.record({ type: 'goal', scorer, smash: Boolean(puck.smashActive), scores: [...this.scores] });
       this.server = goal > 0 ? -1 : 1;
       this.state = Math.max(...this.scores) >= cfg.scoreToWin ? 'over' : 'ready';
       return;
