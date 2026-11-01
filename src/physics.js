@@ -9,6 +9,7 @@ export const DEFAULTS = Object.freeze({
   wallRestitution: 0.94, paddleRestitution: 0.96,
   friction: 0.25, paddleGrip: 0.65, wallFriction: 0.32, gestureTransfer: 0.40, drag: 0.09, spinDrag: 0.32,
   aiSpeed: 6.7, aiAcceleration: 36,
+  smashEffectMinSpeed: 14, smashEffectMinIntensity: .5,
   tick: 1 / 120, scoreToWin: 7
 });
 
@@ -158,6 +159,8 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   puck.vz += tangentImpulse * tz;
   puck.spin -= 2 * tangentImpulse / radius;
   const capped = limitPuckSpeed(puck);
+  if (smash >= cfg.smashEffectMinIntensity && magnitude(puck.vx, puck.vz) >= cfg.smashEffectMinSpeed) puck.smashActive = true;
+  if (magnitude(puck.vx, puck.vz) < cfg.smashEffectMinSpeed) puck.smashActive = false;
   puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped, smash };
   return true;
 }
@@ -218,7 +221,7 @@ export class Match {
     this.ai = { x: 0, z: 3.8, vx: 0, vz: 0, side: 1 };
     this.aiBrain = createAIBrain();
     this.target = { x: 0, z: -3.8 };
-    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, angle: 0, lastImpact: null }; // visible pre-serve rest position
+    this.puck = { x: 0, z: -2.35, vx: 0, vz: 0, spin: 0, angle: 0, smashActive: false, lastImpact: null }; // visible pre-serve rest position
     this.scores = [0, 0];
     this.state = 'ready';
     this.server = -1; // first engagement belongs to the player
@@ -237,7 +240,7 @@ export class Match {
     // Neither player nor AI receives a pre-programmed impulse.
     this.puck.x = 0; this.puck.z = this.server * 2.35;
     this.puck.vx = 0; this.puck.vz = 0;
-    this.puck.spin = 0; this.puck.angle = 0; this.puck.lastImpact = null;
+    this.puck.spin = 0; this.puck.angle = 0; this.puck.smashActive = false; this.puck.lastImpact = null;
     Object.assign(this.player, { x: 0, z: -3.8, vx: 0, vz: 0 });
     Object.assign(this.ai, { x: 0, z: 3.8, vx: 0, vz: 0 });
     Object.assign(this.target, { x: 0, z: -3.8 });
@@ -318,10 +321,12 @@ export class Match {
       goal = collideWalls(puck, cfg);
       if(beforeRail&&(beforeRail.vx!==puck.vx||beforeRail.vz!==puck.vz))this.logContact({type:'rail',before:beforeRail,after:{...puck},deltaVelocity:{x:puck.vx-beforeRail.vx,z:puck.vz-beforeRail.vz},deltaSpin:puck.spin-beforeRail.spin},k*step);
       if(this.roundLog)this.roundLog.peakSpeed=Math.max(this.roundLog.peakSpeed,magnitude(puck.vx,puck.vz));
+      if (magnitude(puck.vx,puck.vz) < cfg.smashEffectMinSpeed) puck.smashActive = false;
       if (goal) break;
       puck.vx *= Math.exp(-cfg.drag * step);
       puck.vz *= Math.exp(-cfg.drag * step);
       puck.spin *= Math.exp(-cfg.spinDrag * step);
+      if (magnitude(puck.vx,puck.vz) < cfg.smashEffectMinSpeed) puck.smashActive = false;
     }
     if(this.roundLog){
       const log=this.roundLog;

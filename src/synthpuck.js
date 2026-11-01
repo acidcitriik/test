@@ -2,8 +2,8 @@ import {cloudflareConfiguration,iceConfiguration} from './ice-config.js?v=online
 import {playerAuth} from './player-auth.js?v=online-20261101-3';
 import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
-import {BrowserHost} from './browser-host.js?v=smash-gesture-20261101-5';
-import {Match,clamp,magnitude} from './physics.js?v=smash-gesture-20261101-5';
+import {BrowserHost} from './browser-host.js?v=smash-effect-20261101-6';
+import {Match,clamp,magnitude} from './physics.js?v=smash-effect-20261101-6';
 import {SPRITE_URLS,SPRITE_ART} from './synthpuck-sprite-art.js';
 import {HAL_STAGE_ID,HAL_EYE_CALIBRATION,halEyeTarget} from './hal-eye.js';
 import {moveTargetWithMouse,moveTargetWithTouch} from './controls.js';
@@ -296,6 +296,17 @@ function drawCollisionBody(obj,type){
  ctx.beginPath();ctx.arc(center.x,center.y,2.5*layout.scale,0,Math.PI*2);ctx.fillStyle='#39ff75';ctx.fill();
  ctx.restore();
 }
+function drawSmashEffect(obj){
+ const center=project(obj.x,obj.z);
+ const {rx,ry}=projectedRadius(obj.x,obj.z,match.cfg.puckRadius);
+ ctx.save();
+ ctx.shadowColor='#ff6100';ctx.shadowBlur=20*layout.scale;
+ ctx.strokeStyle='#ff8a25';ctx.lineWidth=5*layout.scale;
+ ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.35,ry*1.35,0,0,Math.PI*2);ctx.stroke();
+ ctx.shadowBlur=8*layout.scale;ctx.strokeStyle='#fff4ae';ctx.lineWidth=2*layout.scale;
+ ctx.beginPath();ctx.ellipse(center.x,center.y,rx*1.24,ry*1.24,0,0,Math.PI*2);ctx.stroke();
+ ctx.restore();
+}
 function drawObject(obj,type){
  const {x,y,width,height}=spriteGeometry(obj,type);
  const img=images.sprites[type];
@@ -324,6 +335,7 @@ function drawObject(obj,type){
   ctx.fillStyle='#16e65b44';ctx.fill();
  }
  drawCollisionBody(obj,type);
+ if(type==='puck' && obj.smashActive)drawSmashEffect(obj);
 }
 function drawHalEye(dt){
   if(currentStage!==HAL_STAGE_ID||!match)return;
