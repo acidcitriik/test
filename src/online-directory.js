@@ -1,4 +1,4 @@
-import {playerAuth} from './player-auth.js';
+import {playerAuth} from './player-auth.js?v=online-20261101-3';
 
 // The online directory uses Supabase Postgres (RLS + RPC) rather than trusting
 // client-supplied nicknames, presence states or invitation targets.
