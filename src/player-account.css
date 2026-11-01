@@ -1,0 +1,58 @@
+/* Player account UI is an independent overlay: no modifications to painted menu,
+   arcade stage artwork, paddle sprites, game HUD or physics table. */
+#accountLauncher{display:none;position:fixed;z-index:12;top:clamp(10px,2vh,22px);right:clamp(10px,2vw,28px);
+  border:1px solid #5cdeff;background:linear-gradient(100deg,#10263deb,#16223ded);
+  border-radius:5px;color:#e6faff;box-shadow:0 2px 14px #020711d9;
+  font:800 clamp(13px,1.35vw,19px) 'Barlow Condensed',system-ui,sans-serif;letter-spacing:.11em;
+  padding:9px 15px;max-width:min(42vw,280px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+#panel[data-screen="menu"] ~ #accountLauncher{display:block}
+#accountLauncher:hover,#accountLauncher:focus-visible{border-color:white;background:#17435a}
+#accountOverlay[hidden]{display:none}
+#accountOverlay{position:fixed;inset:0;z-index:70;display:grid;place-items:center;overflow:auto;
+  padding:clamp(10px,2vw,26px);background:rgba(2,7,18,.86);backdrop-filter:blur(9px);
+  font-family:Rajdhani,system-ui,sans-serif;color:#eef7ff}
+.account-dialog{width:min(720px,100%);max-height:calc(100dvh - 20px);overflow-y:auto;
+  border:1px solid #61c8ec;box-shadow:0 20px 85px #000c,0 0 38px #009ddc33;
+  border-radius:7px;background:linear-gradient(155deg,#132c42,#0a1427 54%,#1b172d);
+  padding:clamp(16px,3vw,33px);display:grid;gap:13px}
+.account-header{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+  border-bottom:1px solid #61c8ec55;padding-bottom:14px}
+.account-header h2{font-size:clamp(30px,5vw,52px);line-height:1.02}
+.account-tag{color:#74dfff;letter-spacing:.24em;font:700 12px Rajdhani,sans-serif}
+.account-close{height:43px;width:43px;min-width:43px;border:1px solid #76c4e0;border-radius:4px;
+  background:#152b45;color:#fff;font:36px/1 system-ui,sans-serif;cursor:pointer}
+.account-close:hover{border-color:#fff;background:#315570}
+.account-sub{color:#bcd5e7;font-size:16px;line-height:1.4}
+.account-error{color:#ffb7c3;font-weight:700;font-size:15px}
+.account-notice{color:#90e5fb;font-size:16px;font-weight:700;min-height:20px}
+.account-form{display:grid;gap:13px}
+.account-form h3{font-size:clamp(23px,3vw,30px);color:#fff}
+.account-field{font-size:15px;font-weight:800;letter-spacing:.05em;display:grid;gap:5px;color:#d6ecfa}
+.account-field input,.account-field select{width:100%;min-width:0;margin:0;padding:11px 12px;
+  border:1px solid #557b98;border-radius:4px;background:#071427;color:#f3faff;
+  font:600 17px Rajdhani,system-ui,sans-serif}
+.account-field input:focus,.account-field select:focus{outline:2px solid #5bd9fc;outline-offset:1px}
+.account-button{width:100%;min-height:46px;padding:10px 16px;border:1px solid #477b9a;border-radius:4px;
+  background:#102d46;color:#effaff;text-align:center;cursor:pointer;
+  font:800 clamp(17px,2.3vw,23px) 'Barlow Condensed',system-ui,sans-serif;letter-spacing:.07em}
+.account-button:hover:not(:disabled){background:#15516e;border-color:#7bdfff}
+.account-button.primary{background:linear-gradient(115deg,#d42d58,#fb6857);border-color:#ff8290}
+.account-button.primary:hover:not(:disabled){background:#f04b69}
+.account-button:disabled{opacity:.5;cursor:wait}
+.account-separator{text-align:center;color:#9db6d1;font-size:13px;letter-spacing:.16em}
+.account-links{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.account-layout{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.account-colors{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.account-color{display:flex;align-items:center;justify-content:space-between;gap:9px;
+  background:#091a2f;border:1px solid #355d79;border-radius:4px;
+  color:#dceefa;padding:7px 12px;font-size:15px;font-weight:800}
+.account-color input{width:54px;height:38px;cursor:pointer;border:0;background:transparent;padding:0}
+.account-footer{color:#93aac1;text-align:center;font-size:13px;border-top:1px solid #61c8ec33;padding-top:13px}
+@media(max-width:620px){
+  #accountLauncher{max-width:46vw;padding:7px 10px;font-size:13px}
+  .account-layout{grid-template-columns:1fr}
+  .account-colors{grid-template-columns:1fr}
+  .account-links{grid-template-columns:1fr}
+  .account-dialog{gap:10px}
+  .account-header h2{font-size:31px}
+}
