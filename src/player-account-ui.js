@@ -1,4 +1,4 @@
-import {playerAuth} from './player-auth.js';
+import {playerAuth} from './player-auth.js?v=online-20261101-3';
 import {DEFAULT_AVATAR,AVATAR_CHOICES,normalizeAvatar,escapeHtml} from './player-profile.js';
 
 const launcher=document.getElementById('accountLauncher');
