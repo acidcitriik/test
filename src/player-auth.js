@@ -71,6 +71,13 @@ export const playerAuth={
   get configured(){return configured;},
   snapshot(){return {...state};},
   subscribe(listener){listeners.add(listener);return ()=>listeners.delete(listener);},
+  database(){return requireClient();},
+  async accessToken(){
+    await this.init();
+    const {data,error}=await requireClient().auth.getSession();
+    if(error)throw error;
+    return data?.session?.access_token||null;
+  },
   init(){
     if(initPromise)return initPromise;
     if(!configured){patch({status:'disabled'});return Promise.resolve();}
