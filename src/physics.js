@@ -15,6 +15,13 @@ export const DEFAULTS = Object.freeze({
 export const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
 export const magnitude = (x, z) => Math.hypot(x, z);
 const EPS = 1e-9;
+export const MAX_PUCK_SPEED = 28;
+function limitPuckSpeed(puck) {
+  const speed = magnitude(puck.vx, puck.vz);
+  if (speed <= MAX_PUCK_SPEED) return false;
+  puck.vx *= MAX_PUCK_SPEED / speed; puck.vz *= MAX_PUCK_SPEED / speed;
+  return true;
+}
 
 // The input controls a target; it never directly sets paddle velocity or power.
 // The same acceleration and norm-based speed limits apply to both movement axes.
@@ -107,8 +114,14 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   const driveBlend = clamp((strokeSpeed - 1.5) / 4.5, 0, 1);
   const commitment = paddle.stroke?.commitment ?? driveBlend * driveBlend * (3 - 2 * driveBlend);
   const drive = .45 + .55 * commitment;
-  const driveX = (paddle.stroke?.vx ?? paddle.vx) * drive;
-  const driveZ = (paddle.stroke?.vz ?? paddle.vz) * drive;
+  // The measured gesture cannot push after the paddle stops or reverses.
+  // Project the filtered speed onto the current movement direction and cap it
+  // at the actual speed, so stale momentum cannot supply energy at contact.
+  const filteredX = paddle.stroke?.vx ?? paddle.vx;
+  const filteredZ = paddle.stroke?.vz ?? paddle.vz;
+  const along = strokeSpeed > EPS ? clamp((filteredX * paddle.vx + filteredZ * paddle.vz) / strokeSpeed, 0, strokeSpeed) : 0;
+  const driveX = strokeSpeed > EPS ? paddle.vx / strokeSpeed * along * drive : 0;
+  const driveZ = strokeSpeed > EPS ? paddle.vz / strokeSpeed * along * drive : 0;
   const relativeNormal = (puck.vx - driveX) * nx + (puck.vz - driveZ) * nz;
   if (relativeNormal >= -EPS) return false;
   const fullRestitution = mode === 'rigid' ? .99 : mode === 'soft' ? .46
@@ -135,7 +148,8 @@ export function collidePaddle(puck, paddle, cfg, mode = 'normal') {
   puck.vx += tangentImpulse * tx;
   puck.vz += tangentImpulse * tz;
   puck.spin -= 2 * tangentImpulse / radius;
-  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse };
+  const capped = limitPuckSpeed(puck);
+  puck.lastImpact = { mode, normal: normalImpulse, tangent: tangentImpulse, capped };
   return true;
 }
 
@@ -158,6 +172,7 @@ function bounceRail(p, normalAxis, normalSign, cfg) {
     p.vx += impulse;
     p.spin += normalSign * 2 * impulse / radius;
   }
+  limitPuckSpeed(p);
 }
 
 export function collideWalls(p, cfg) {
@@ -314,9 +329,6 @@ export class Match {
     }
     const speed = magnitude(puck.vx, puck.vz);
     this.peakSpeed = Math.max(this.peakSpeed, speed);
-    const maxSafeSpeed = 28; // protects numerical stability; not a scoring bonus
-    if (speed > maxSafeSpeed) {
-      puck.vx *= maxSafeSpeed / speed; puck.vz *= maxSafeSpeed / speed;
-    }
+    limitPuckSpeed(puck);
   }
 }

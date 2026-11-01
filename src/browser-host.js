@@ -1,7 +1,7 @@
 import {iceConfiguration} from './ice-config.js';
 import {ConnectionDebug} from './connection-debug.js';
 import './vendor/peerjs.min.js';
-import {Match,clamp} from './physics.js?v=round-log-20261101-3';
+import {Match,clamp} from './physics.js?v=physics-contact-20261101-4';
 
 // Socket-shaped adapter: game simulation lives exclusively in the host browser.
 export class BrowserHost {
