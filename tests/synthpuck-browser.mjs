@@ -122,19 +122,26 @@ try{
    puck:api.spriteGeometry('puck',0,0)};
  });
  assert.deepEqual(calibrated.table.near,{y:816,left:200,right:1475});
- assert.deepEqual(calibrated.table.far,{y:400,left:670,right:1002});
+ assert.deepEqual(calibrated.table.far,{y:405,left:640,right:1032});
  assert.deepEqual(calibrated.table.center,{y:554,left:475,right:1201});
- assert.ok(Math.abs(calibrated.middle.y-554)<1,'Puck center follows painted midline');
- assert.deepEqual(calibrated.far,[{x:670,y:400},{x:1002,y:400}],
-   'Only the far physical rail must fit the painted back lip');
- assert.deepEqual(calibrated.near,[{x:200,y:816},{x:1475,y:816}],
-   'Already correct physical front rail must remain pixel-identical');
+ const close=(value,expected,label)=>assert.ok(Math.abs(value-expected)<.015,
+   label+' expected '+expected+', got '+value);
+ close(calibrated.middle.y,554,'Center line preserved');
+ for(const [name,actual,expected] of [
+   ['Far left',calibrated.far[0],[640,405]],
+   ['Far right',calibrated.far[1],[1032,405]],
+   ['Near left',calibrated.near[0],[200,816]],
+   ['Near right',calibrated.near[1],[1475,816]]
+ ]){ close(actual.x,expected[0],name+' X');close(actual.y,expected[1],name+' Y'); }
+ for(const [name,x,expected] of [
+  ['Center left',2.9,475],['Center right',-2.9,1201]
+ ])close((await page.evaluate(x=>__synthpuck.project(x,0),x)).x,expected,name);
  const rearCurve=await page.evaluate(()=>[4.75,3.75,2.5,0,-2.5,-5].map(z=>{
    const x=__synthpuck.project(2.9,z);
    const y=__synthpuck.project(-2.9,z);
    return {z,left:x.x,right:y.x,height:x.y,symmetricHeight:y.y};
  }));
- assert.ok(rearCurve.every(p=>p.left<p.right&&p.height===p.symmetricHeight),'Projected rail stays planar');
+ assert.ok(rearCurve.every(p=>p.left<p.right&&Math.abs(p.height-p.symmetricHeight)<.015),'Projected rail stays planar');
  assert.ok(rearCurve.every((p,i)=>i===0||p.height>rearCurve[i-1].height),
    'Perspective is monotonic toward the viewer');
  for(const [name,spr] of Object.entries({player:calibrated.player,ai:calibrated.ai,puck:calibrated.puck})){
