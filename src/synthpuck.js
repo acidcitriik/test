@@ -1,5 +1,5 @@
-import {cloudflareConfiguration,iceConfiguration} from './ice-config.js';
-import {playerAuth} from './player-auth.js';
+import {cloudflareConfiguration,iceConfiguration} from './ice-config.js?v=online-20261101-3';
+import {playerAuth} from './player-auth.js?v=online-20261101-3';
 import {OnlineDirectory} from './online-directory.js';
 import {lobbyMarkup,renderOnlineSections} from './online-ui.js';
 import {BrowserHost} from './browser-host.js?v=stroke-20261101-2';
