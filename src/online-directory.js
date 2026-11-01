@@ -96,6 +96,11 @@ export class OnlineDirectory {
     await this.refresh();
     return data;
   }
+  async cancelPending(){
+    if(!this.ready)return;
+    const {error}=await playerAuth.database().rpc('online_cancel_invites');
+    if(error)throw error;
+  }
   async respond(invitationId,accept){
     if(!this.ready)throw new Error('Connecte-toi pour répondre.');
     const {data,error}=await playerAuth.database().rpc('online_reply_invite',{
