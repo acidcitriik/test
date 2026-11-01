@@ -2,7 +2,7 @@ import {escapeHtml} from './player-profile.js';
 
 export function lobbyMarkup(btn){
   return '<div class="page online-page">'+
-    '<header class="page-head"><div><p class="eyebrow">SYNTHPUCK / CONNECTÉ</p><h2>ONLINE · DUELS 1V1</h2></div>'+btn('← MENU','menu')+'</header>'+
+    '<header class="page-head"><div><p class="eyebrow">SYNTHPUCK / RÉSEAU</p><h2>ONLINE · DUELS 1V1</h2></div>'+btn('← MENU','menu')+'</header>'+
     '<p id="lobbyStatus" class="sub" role="status" aria-live="polite">Choisis un adversaire ou partage un code de partie.</p>'+
     '<div class="online-layout">'+
       '<section class="online-panel"><h3>JOUEURS EN LIGNE</h3>'+
