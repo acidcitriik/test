@@ -511,33 +511,40 @@ function setBackground(stage,withOpponent){
   else{drawBackdrop();}
 }
 addEventListener('resize',resize);
+function isGameInputBlocked(event){
+  if(!$('accountOverlay').hidden)return true;
+  const target=event?.target;
+  return target instanceof Element && Boolean(target.closest(
+    'input,select,textarea,[contenteditable="true"],[role="textbox"]'));
+}
 document.addEventListener('mousemove',e=>{
-  if(!active||!match||isTouch())return;
+  if(!active||!match||isTouch()||isGameInputBlocked(e))return;
   // Relative motion allows the original controller to stay instant and reversible.
   const movement=moveTargetWithMouse(match.target,e.movementX,e.movementY,mouseSensitivity,match.cfg);
   match.target.x=movement.x;match.target.z=movement.z;
 });
-arena.addEventListener('click',()=>{if(active&&!isTouch()&&document.pointerLockElement!==arena){arena.requestPointerLock?.().catch(()=>{});}});
-document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena){pointerRequested=false;if(active&&!isTouch())showPause();}});
-document.addEventListener('mousedown',e=>{if(!active||!match||isTouch())return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
+arena.addEventListener('click',()=>{if(active&&$('accountOverlay').hidden&&!isTouch()&&document.pointerLockElement!==arena){arena.requestPointerLock?.().catch(()=>{});}});
+document.addEventListener('pointerlockchange',()=>{if(document.pointerLockElement!==arena){pointerRequested=false;if(active&&!isTouch()&&$('accountOverlay').hidden)showPause();}});
+document.addEventListener('mousedown',e=>{if(!active||!match||isTouch()||isGameInputBlocked(e))return;if(e.button===0)match.setButton('left',true);if(e.button===2)match.setButton('right',true);});
 document.addEventListener('mouseup',e=>{if(!match||isTouch())return;if(e.button===0)match.setButton('left',false);if(e.button===2)match.setButton('right',false);});
 document.addEventListener('contextmenu',e=>{if(active)e.preventDefault();});
 arena.addEventListener('touchstart',e=>{
-  if(!active||!match||touchId!==null)return;
+  if(!active||!match||touchId!==null||isGameInputBlocked(e))return;
   const t=e.changedTouches[0];if(!t)return;e.preventDefault();touchId=t.identifier;lastTouch={x:t.clientX,y:t.clientY};
 },{passive:false});
 addEventListener('touchmove',e=>{
-  if(!active||touchId===null||!match)return;
+  if(!active||touchId===null||!match||isGameInputBlocked(e))return;
   const t=[...e.changedTouches].find(t=>t.identifier===touchId);if(!t)return;e.preventDefault();
   const target=moveTargetWithTouch(match.target,t.clientX-lastTouch.x,t.clientY-lastTouch.y,layout.cssW,layout.cssH,mouseSensitivity,match.cfg);
   match.target.x=target.x;match.target.z=target.z;lastTouch={x:t.clientX,y:t.clientY};
 },{passive:false});
 for(const type of ['touchend','touchcancel'])addEventListener(type,e=>{if([...e.changedTouches].some(t=>t.identifier===touchId))touchId=null;});
 addEventListener('keydown',e=>{
+  if(isGameInputBlocked(e))return;
   if(e.code==='Escape'&&active){e.preventDefault();showPause();}
   if(e.code==='Space'){e.preventDefault();if(screen==='pause'||screen==='point')resume();}
 });
-addEventListener('blur',()=>{match?.setButton('left',false);match?.setButton('right',false);if(active)showPause('FENÊTRE INACTIVE');});
+addEventListener('blur',()=>{match?.setButton('left',false);match?.setButton('right',false);if(active&&$('accountOverlay').hidden)showPause('FENÊTRE INACTIVE');});
 // Read-only diagnostics support end-to-end verification of game states.
 window.__synthpuck=Object.freeze({
   snapshot:()=>({screen,mode,level,opponent:opponent.id,stage:currentStage,
