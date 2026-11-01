@@ -63,7 +63,8 @@ function onSession(event,session){
   }
   const unchanged=state.user?.id===user.id;
   patch({user,status:'ready',profile:unchanged?state.profile:null,profileError:''});
-  if(!unchanged||!state.profile)queueMicrotask(()=>{void loadProfile(user);});
+  // Supabase auth callbacks must not issue another API call while its auth lock is held.
+  if(!unchanged||!state.profile)setTimeout(()=>{void loadProfile(user);},0);
 }
 
 export const playerAuth={
