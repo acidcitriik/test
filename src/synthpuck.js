@@ -383,38 +383,101 @@ function updateConnectionDebug(report){
   }
   box.hidden=false;$('connectionLog').textContent=report;const log=$('connectionLog');log.scrollTop=log.scrollHeight;
 }
-function showLobby(message='Crée une partie ou saisis le code donné par ton ami.'){
+function showLobby(message='Choisis un joueur en ligne ou utilise un code privé.'){
   active=false;mode='multi';hud.hidden=true;touchBar.hidden=true;setScreen('lobby');
-  panel.innerHTML=`<div class="page"><h2>MULTIJOUEUR 1V1</h2><p id="lobbyStatus" class="sub"></p><p class="sub">Le créateur héberge la partie dans son navigateur. Garde cet onglet ouvert et visible.</p><label>Code privé du relais Cloudflare <input id="relayAccess" type="password" autocomplete="off" /></label><p class="sub">Pour votre test privé, utilisez le même code de relais sur les deux appareils.</p>${btn('CRÉER UNE PARTIE','host',true)}<label>Code de partie <input id="roomCode" maxlength="64" autocomplete="off" /></label>${btn('REJOINDRE','join')}${btn('RETOUR AU MENU','menu')}</div>`;
-  $('lobbyStatus').textContent=message;try{$('relayAccess').value=sessionStorage.getItem('synthpuckRelayAccess')||'';}catch{}
-
+  panel.innerHTML=lobbyMarkup(btn);
+  $('lobbyStatus').textContent=message;
+  renderOnlineSections(online,!!playerAuth.snapshot().user);
+  void online.start();
 }
-async function connectMultiplayer(action){
-  const code=$('roomCode').value.trim();
-  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,64}$/.test(code)){$('lobbyStatus').textContent='Colle le code de partie de ton ami.';return;}
-  const access=$('relayAccess').value.trim();if(!access){$('lobbyStatus').textContent='Saisis le code privé du relais Cloudflare.';return;}
-  stopNetwork();let ws;const attempt=Symbol();connectionAttempt=attempt;$('lobbyStatus').textContent='Préparation du relais Cloudflare…';
-  try{const config=await cloudflareConfiguration(access);if(connectionAttempt!==attempt||screen!=='lobby')return;try{sessionStorage.setItem('synthpuckRelayAccess',access);}catch{}ws=new BrowserHost(config);}catch(e){if(connectionAttempt===attempt&&screen==='lobby')showLobby('Initialisation impossible : '+e.message);return;}network=ws;
+async function connectMultiplayer(action,suppliedCode=null,inviteTarget=null){
+  const code=(suppliedCode??$('roomCode')?.value??'').trim();
+  if(action==='join'&&!/^[a-zA-Z0-9_-]{6,128}$/.test(code)){
+    if($('lobbyStatus'))$('lobbyStatus').textContent='Colle un code de partie valide.';
+    return;
+  }
+  if(network)stopNetwork();
+  const attempt=Symbol();connectionAttempt=attempt;
+  const notify=message=>{if($('lobbyStatus'))$('lobbyStatus').textContent=message;};
+  notify('Préparation de la connexion WebRTC…');
+  let config=iceConfiguration(),relayMessage='';
+  if(playerAuth.snapshot().user){
+    try{
+      const token=await playerAuth.accessToken();
+      if(token)config=await cloudflareConfiguration(token);
+      else relayMessage=' Relais privé indisponible : STUN uniquement.';
+    }catch(error){
+      // Deployed TURN Worker and authenticated Supabase are optional during rollout.
+      // Never ask the player for or expose a shared TURN API key.
+      relayMessage=' Relais TURN non activé : connexion directe uniquement.';
+    }
+  }else relayMessage=' Mode invité : connexion directe (réseaux restrictifs non garantis).';
+  if(connectionAttempt!==attempt||screen!=='lobby')return;
+  const ws=new BrowserHost(config);network=ws;
   ws.debug.onchange=updateConnectionDebug;updateConnectionDebug(ws.debug.report());
-  $('lobbyStatus').textContent='Connexion…';
-  const timeout=setTimeout(()=>{if(network===ws&&ws.readyState!==WebSocket.OPEN){stopNetwork();showLobby('Service de connexion inaccessible. Vérifie Internet.');}},30000);
-  ws.onopen=()=>{clearTimeout(timeout);ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));};
-  ws.onclose=()=>{if(network!==ws)return;stopNetwork();showLobby('Connexion interrompue. Recrée ou rejoins une partie.');};
-  ws.onerror=()=>{if($('lobbyStatus'))$('lobbyStatus').textContent='Connexion impossible : vérifie le serveur et son adresse.';};
-  ws.onmessage=e=>{if(network!==ws)return;const d=JSON.parse(e.data);
-    if(d.type==='lobby'){$('lobbyStatus').textContent='Code : '+d.code+' — En attente du deuxième joueur…';}
+  notify('Connexion au service de jeu…'+relayMessage);
+  const timeout=setTimeout(()=>{
+    if(network===ws&&ws.readyState!==WebSocket.OPEN){
+      stopNetwork();showLobby('Service de connexion indisponible. Vérifie Internet.');
+    }
+  },30000);
+  ws.onopen=()=>{
+    clearTimeout(timeout);
+    if(network!==ws)return;
+    ws.send(JSON.stringify({type:action==='host'?'create':'join',code}));
+  };
+  ws.onclose=()=>{
+    clearTimeout(timeout);
+    if(network!==ws)return;
+    stopNetwork();showLobby('Connexion interrompue. Tu peux réessayer.');
+  };
+  ws.onerror=()=>notify('Échec de la connexion. Vérifie Internet.');
+  ws.onmessage=e=>{
+    if(network!==ws)return;
+    const d=JSON.parse(e.data);
+    if(d.type==='lobby'){
+      notify('Code : '+d.code+' · En attente de ton adversaire…'+relayMessage);
+      if(inviteTarget){
+        const target=inviteTarget;inviteTarget=null;
+        void online.setStatus('busy')
+          .then(()=>online.invite(target,d.code))
+          .then(()=>notify('Invitation envoyée ! Attends que ton adversaire accepte.'))
+          .catch(error=>{
+            notify('Invitation impossible : '+error.message+' · Tu peux partager le code : '+d.code);
+            void online.setStatus('available');
+          });
+      }
+    }
     if(d.type==='error'){stopNetwork();showLobby(d.message);}
     if(d.type==='left'){stopNetwork();showLobby('L’autre joueur a quitté la partie.');}
     if(d.type==='start'){
-      networkSlot=d.slot;mode='multi';match=new Match();currentStage='training';setBackground('training',false);
-      hud.hidden=false;touchBar.hidden=!isTouch();$('hudMode').textContent='MULTIJOUEUR';$('hudStage').textContent='DUEL 1V1';$('hudLevel').textContent=networkSlot?'JOUEUR 2':'JOUEUR 1';resume();
-      networkTimer=setInterval(()=>{if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<4096)ws.send(JSON.stringify({type:'input',...match.target,left:match.input.left,right:match.input.right}));},1000/60);
+      online.stop();networkSlot=d.slot;mode='multi';match=new Match();
+      currentStage='training';setBackground('training',false);
+      hud.hidden=false;touchBar.hidden=!isTouch();
+      $('hudMode').textContent='ONLINE';$('hudStage').textContent='DUEL 1V1';
+      $('hudLevel').textContent=networkSlot?'JOUEUR 2':'JOUEUR 1';
+      resume();
+      networkTimer=setInterval(()=>{
+        if(ws.readyState===WebSocket.OPEN&&ws.bufferedAmount<4096)
+          ws.send(JSON.stringify({type:'input',...match.target,left:match.input.left,right:match.input.right}));
+      },1000/60);
     }
     if(d.type==='state'&&match){
       const flip=p=>({...p,x:-p.x,z:-p.z,vx:-p.vx,vz:-p.vz});
-      Object.assign(match.player,networkSlot?flip(d.ai):d.player);Object.assign(match.ai,networkSlot?flip(d.player):d.ai);Object.assign(match.puck,networkSlot?flip(d.puck):d.puck);
-      match.scores=networkSlot?[...d.scores].reverse():d.scores;match.state=d.state;match.server=networkSlot?-d.server:d.server;match.awaitingServe=d.awaitingServe;
-      if(d.state==='over'){active=false;clearInterval(networkTimer);setScreen('result',true);panel.innerHTML=`<div class="compact-center"><h2>${match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE'}</h2><p>${match.scores.join(' : ')}</p>${btn('RETOUR AU LOBBY','multi',true)}${btn('MENU','menu')}</div>`;document.exitPointerLock?.();}
+      Object.assign(match.player,networkSlot?flip(d.ai):d.player);
+      Object.assign(match.ai,networkSlot?flip(d.player):d.ai);
+      Object.assign(match.puck,networkSlot?flip(d.puck):d.puck);
+      match.scores=networkSlot?[...d.scores].reverse():d.scores;
+      match.state=d.state;match.server=networkSlot?-d.server:d.server;
+      match.awaitingServe=d.awaitingServe;
+      if(d.state==='over'){
+        active=false;clearInterval(networkTimer);setScreen('result',true);
+        panel.innerHTML='<div class="compact-center"><h2>'+
+          (match.scores[0]>match.scores[1]?'VICTOIRE':'DÉFAITE')+
+          '</h2><p>'+match.scores.join(' : ')+'</p>'+
+          btn('RETOUR AU LOBBY','multi',true)+btn('MENU','menu')+'</div>';
+        document.exitPointerLock?.();
+      }
     }
   };
 }
